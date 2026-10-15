@@ -91,6 +91,11 @@
   --breakpoint-md: 861px;
 }
 
+html,
+body {
+  overscroll-behavior: none;
+}
+
 body {
   background: var(--bg);
   color: var(--ink);

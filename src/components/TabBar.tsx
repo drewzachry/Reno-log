@@ -11,7 +11,7 @@ export function TabBar() {
   return (
     <nav
       aria-label="Main"
-      className="border-line bg-paper fixed inset-x-0 bottom-0 z-20 border-t px-[max(4px,env(safe-area-inset-left))] pb-[env(safe-area-inset-bottom)] md:static md:border-t-0 md:border-b md:bg-transparent md:px-0 md:pb-0"
+      className="border-line bg-paper order-last flex-none border-t px-[max(4px,env(safe-area-inset-left))] pb-[env(safe-area-inset-bottom)] md:order-none md:mx-[max(16px,env(safe-area-inset-left))] md:border-t-0 md:border-b md:bg-transparent md:px-0 md:pb-0"
     >
       <ul className="grid grid-cols-7 md:flex md:gap-0.5">
         {TABS.map((tab) => {

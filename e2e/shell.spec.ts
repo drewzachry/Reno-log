@@ -15,9 +15,7 @@ test("tab bar navigates between the main screens", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "History" })).toBeVisible();
 });
 
-test("tab targets are at least 44px tall and the page doesn't scroll sideways", async ({
-  page,
-}) => {
+test("tab targets are at least 44px tall and the page itself doesn't scroll", async ({ page }) => {
   await page.goto("/");
   for (const link of await page.getByRole("navigation", { name: "Main" }).getByRole("link").all()) {
     const box = await link.boundingBox();
