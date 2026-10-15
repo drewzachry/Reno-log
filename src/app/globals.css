@@ -1,0 +1,74 @@
+@import "tailwindcss";
+
+/*
+ * Design tokens. Provisional: these are to be replaced with the colors and
+ * fonts from prototype/reno-logbook.html once it's in the repo.
+ */
+:root {
+  --bg: #f6f3ee;
+  --surface: #ffffff;
+  --ink: #1f1d1a;
+  --muted: #6b665e;
+  --line: #e4ded4;
+  --accent: #c2532b;
+  --accent-ink: #ffffff;
+  --ok: #2f7d4f;
+  --warn: #b7791f;
+  --danger: #b42318;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #161513;
+    --surface: #1f1d1a;
+    --ink: #f2eee7;
+    --muted: #a39d92;
+    --line: #34312c;
+    --accent: #e9774b;
+    --accent-ink: #1a0f0a;
+    --ok: #5fbf85;
+    --warn: #e3a948;
+    --danger: #f07167;
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg: #161513;
+  --surface: #1f1d1a;
+  --ink: #f2eee7;
+  --muted: #a39d92;
+  --line: #34312c;
+  --accent: #e9774b;
+  --accent-ink: #1a0f0a;
+  --ok: #5fbf85;
+  --warn: #e3a948;
+  --danger: #f07167;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-ok: var(--ok);
+  --color-warn: var(--warn);
+  --color-danger: var(--danger);
+  --font-sans: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-heading), ui-serif, Georgia, serif;
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* 16px minimum stops iOS from zooming into form fields. */
+input,
+textarea,
+select {
+  font-size: max(16px, 1rem);
+}

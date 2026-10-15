@@ -1,0 +1,9 @@
+node_modules
+.next
+package-lock.json
+supabase/.temp
+public/icons
+docs
+CLAUDE.md
+README.md
+supabase/config.toml
