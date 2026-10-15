@@ -5,18 +5,14 @@ test("tab bar navigates between the main screens", async ({ page }) => {
   const nav = page.getByRole("navigation", { name: "Main" });
   await expect(nav.getByRole("link", { name: "Chat" })).toHaveAttribute("aria-current", "page");
 
-  await nav.getByRole("link", { name: "Decisions" }).click();
+  await nav.getByRole("link", { name: "Decide" }).click();
   await expect(page).toHaveURL(/\/decisions$/);
   await expect(page.getByRole("heading", { name: "Decisions" })).toBeVisible();
-  await expect(nav.getByRole("link", { name: "Decisions" })).toHaveAttribute(
-    "aria-current",
-    "page",
-  );
+  await expect(nav.getByRole("link", { name: "Decide" })).toHaveAttribute("aria-current", "page");
 
-  await nav.getByRole("link", { name: "More" }).click();
-  await page.getByRole("link", { name: /History/ }).click();
+  await nav.getByRole("link", { name: "Log" }).click();
+  await expect(page).toHaveURL(/\/history$/);
   await expect(page.getByRole("heading", { name: "History" })).toBeVisible();
-  await expect(nav.getByRole("link", { name: "More" })).toHaveAttribute("aria-current", "page");
 });
 
 test("tab targets are at least 44px tall and the page doesn't scroll sideways", async ({

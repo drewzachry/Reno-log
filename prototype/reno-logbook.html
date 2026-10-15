@@ -1,0 +1,959 @@
+<title>Reno Logbook</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..125,500..800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: job-site logbook. Chat column on the left (the only way in), a spec-sheet panel on the right (what the chat built). One column with tabs on phones. */
+:root{
+  --bg:#EEF1F0;          /* drafting vellum */
+  --paper:#FBFCFB;
+  --ink:#18222B;
+  --muted:#5B6870;
+  --line:#D3DAD8;
+  --accent:#1F57C3;      /* chalk-line blue */
+  --accent-ink:#FFFFFF;
+  --accent-soft:#E2EAF8;
+  --pending:#F3DD62;     /* spec highlighter */
+  --pending-soft:#FBF4CC;
+  --ok:#2E7D4F; --ok-soft:#DDEFE3;
+  --warn:#A86200; --warn-soft:#F8E9CF;
+  --bad:#B3261E; --bad-soft:#F7DEDB;
+  --f-display:"Archivo","Arial Narrow",system-ui,sans-serif;
+  --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  --r:6px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#12181D;--paper:#1A2229;--ink:#E3E9EC;--muted:#94A2AA;--line:#2C3740;
+  --accent:#6E9BF0;--accent-ink:#0E1620;--accent-soft:#1E2C44;
+  --pending:#D9C24A;--pending-soft:#3A3518;
+  --ok:#6CC08C;--ok-soft:#1C3326;--warn:#E3A44A;--warn-soft:#3A2C16;--bad:#F08A80;--bad-soft:#3E1F1C;
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#12181D;--paper:#1A2229;--ink:#E3E9EC;--muted:#94A2AA;--line:#2C3740;
+  --accent:#6E9BF0;--accent-ink:#0E1620;--accent-soft:#1E2C44;
+  --pending:#D9C24A;--pending-soft:#3A3518;
+  --ok:#6CC08C;--ok-soft:#1C3326;--warn:#E3A44A;--warn-soft:#3A2C16;--bad:#F08A80;--bad-soft:#3E1F1C;
+  color-scheme:dark}
+html,body{height:100%}
+body{background:var(--bg);color:var(--ink);font:15px/1.5 var(--f-body);}
+*{box-sizing:border-box}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.app{height:100%;display:grid;grid-template-rows:auto 1fr;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+header.top{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding-block:12px;border-bottom:1px solid var(--line)}
+.brand{font-family:var(--f-display);font-stretch:118%;font-weight:800;font-size:19px;letter-spacing:-.01em}
+.brand small{display:block;font-family:var(--f-body);font-stretch:100%;font-weight:500;font-size:12.5px;color:var(--muted);letter-spacing:0}
+.top .spacer{flex:1}
+.ghost{background:none;border:1px solid var(--line);border-radius:var(--r);padding:6px 10px;font-size:13px}
+.ghost:hover{border-color:var(--muted)}
+.main{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:20px;min-height:0;padding-block:14px}
+.tabs{display:flex;gap:2px;flex-wrap:wrap;border-bottom:1px solid var(--line);margin-bottom:12px}
+.tabs button{background:none;border:0;border-bottom:3px solid transparent;padding:8px 10px;font-family:var(--f-display);font-stretch:95%;font-weight:600;font-size:13.5px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
+.tabs .mob{display:none}
+/* Chat */
+.chat{display:grid;grid-template-rows:auto 1fr auto;min-height:0;background:var(--paper);border:1px solid var(--line);border-radius:var(--r)}
+.upnext{padding:12px 14px;border-bottom:1px solid var(--line)}
+.eyebrow{font-family:var(--f-display);font-stretch:90%;font-weight:700;font-size:11.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+.upnext ul{list-style:none;margin:6px 0 0;padding:0;display:grid;gap:4px}
+.upnext li{display:flex;gap:8px;align-items:baseline;font-size:13.5px}
+.upnext li .when{flex:none;min-width:74px;font-size:12px}
+.msgs{overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:12px;min-height:0}
+.msg{max-width:88%;display:grid;gap:8px}
+.msg.user{align-self:flex-end}
+.msg .bubble{padding:9px 12px;border-radius:12px;white-space:pre-wrap;overflow-wrap:anywhere}
+.msg.user .bubble{background:var(--accent);color:var(--accent-ink);border-bottom-right-radius:3px}
+.msg.ai .bubble{background:var(--bg);border-bottom-left-radius:3px}
+.msg .imgs{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.msg .imgs img{width:88px;height:88px;object-fit:cover;border-radius:6px;border:1px solid var(--line)}
+.card{border:1px solid var(--line);border-left:4px solid var(--pending);background:var(--pending-soft);border-radius:var(--r);padding:10px 12px;display:grid;gap:6px}
+.card.confirmed{border-left-color:var(--ok);background:var(--ok-soft)}
+.card.dismissed{border-left-color:var(--line);background:transparent;opacity:.7}
+.card .kind{font-family:var(--f-display);font-weight:700;font-size:11px;letter-spacing:.09em;text-transform:uppercase}
+.card .what{font-weight:600}
+.card .detail{font-size:13.5px;color:var(--muted)}
+.card .flags{display:flex;gap:6px;flex-wrap:wrap}
+.flag{font-size:12px;padding:2px 8px;border-radius:99px;background:var(--warn-soft);color:var(--warn);font-weight:500}
+.card .acts{display:flex;gap:8px;align-items:center}
+.btn{border:0;border-radius:var(--r);padding:7px 14px;font-weight:600;font-size:13.5px;background:var(--accent);color:var(--accent-ink)}
+.btn:disabled{opacity:.5;cursor:default}
+.btn.sec{background:transparent;color:var(--ink);border:1px solid var(--line)}
+.state{font-size:12.5px;font-weight:600}
+.composer{border-top:1px solid var(--line);padding:10px;display:grid;gap:8px}
+.composer .row{display:flex;gap:8px;align-items:flex-end}
+.composer textarea{flex:1;min-width:0;resize:none;border:1px solid var(--line);border-radius:var(--r);padding:9px 10px;background:var(--bg);min-height:42px;max-height:140px}
+.attach{border:1px solid var(--line);border-radius:var(--r);background:var(--bg);width:42px;height:42px;display:grid;place-items:center;flex:none}
+.attach svg{width:20px;height:20px;stroke:var(--ink)}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{border:1px solid var(--line);background:var(--paper);border-radius:99px;padding:4px 10px;font-size:12.5px}
+.chip:hover{border-color:var(--accent)}
+.thumbs{display:flex;gap:6px;flex-wrap:wrap}
+.thumbs div{position:relative}
+.thumbs img{width:56px;height:56px;object-fit:cover;border-radius:6px;border:1px solid var(--line)}
+.thumbs button{position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;border:0;background:var(--ink);color:var(--paper);font-size:12px;line-height:1}
+.note{font-size:12.5px;color:var(--muted)}
+/* Panel */
+.panel{min-height:0;display:grid;grid-template-rows:auto 1fr}
+.pane{overflow-y:auto;min-height:0;padding-bottom:24px}
+h2.sect{font-family:var(--f-display);font-stretch:112%;font-weight:800;font-size:22px;margin:4px 0 4px;text-wrap:balance}
+h3.grp{font-family:var(--f-display);font-stretch:95%;font-weight:700;font-size:13px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);margin:18px 0 6px;display:flex;justify-content:space-between;gap:8px}
+.lede{color:var(--muted);margin:0 0 10px;max-width:62ch}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:var(--r);overflow:hidden;margin:6px 0 4px}
+.seg button{background:none;border:0;padding:5px 10px;font-size:13px}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
+.dlist{display:grid;gap:6px}
+.dec{background:var(--paper);border:1px solid var(--line);border-radius:var(--r);padding:10px 12px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px}
+.dec.overdue{box-shadow:inset 3px 0 0 var(--bad)}
+.dec.soon{box-shadow:inset 3px 0 0 var(--warn)}
+.dec .t{font-weight:600}
+.dec .meta{font-size:12.5px;color:var(--muted);display:flex;gap:10px;flex-wrap:wrap}
+.dec .why{grid-column:1/-1;font-size:13.5px;color:var(--muted);max-width:68ch}
+.dec .sel{grid-column:1/-1;font-size:13.5px}
+.dec select{border:1px solid var(--line);border-radius:var(--r);background:var(--bg);padding:3px 6px;font-size:12.5px;align-self:start}
+.due{font-size:12.5px;font-weight:500}
+.due.bad{color:var(--bad)} .due.warn{color:var(--warn)}
+.pill{font-size:11.5px;padding:1px 7px;border-radius:99px;background:var(--bg);border:1px solid var(--line)}
+.ms{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:4px 12px;align-items:baseline;background:var(--paper);border:1px solid var(--line);border-radius:var(--r);padding:10px 12px}
+.ms .d{font-size:13px}
+.ms .lbl{font-weight:600}
+.ms .ex{grid-column:2/4;font-size:12.5px;color:var(--muted)}
+.bars{display:grid;gap:10px}
+.bucket{background:var(--paper);border:1px solid var(--line);border-radius:var(--r);padding:10px 12px;display:grid;gap:6px}
+.bucket .hd{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.bucket .nm{font-weight:600}
+.meter{height:8px;background:var(--bg);border-radius:4px;overflow:hidden;position:relative}
+.meter i{position:absolute;inset:0 auto 0 0;background:var(--accent);border-radius:4px}
+.meter i.over{background:var(--bad)}
+.bucket .sub{font-size:12.5px;color:var(--muted);display:flex;gap:12px;flex-wrap:wrap}
+.totals{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin:8px 0 4px}
+.tot{border-top:2px solid var(--ink);padding-top:6px}
+.tot b{display:block;font-family:var(--f-mono);font-size:19px;font-weight:500}
+.tot span{font-size:12.5px;color:var(--muted)}
+table.ledger{width:100%;border-collapse:collapse;font-size:13.5px}
+.tablewrap{overflow-x:auto}
+table.ledger th{text-align:left;font-weight:600;font-size:12px;color:var(--muted);border-bottom:1px solid var(--line);padding:6px 8px}
+table.ledger td{border-bottom:1px solid var(--line);padding:7px 8px;vertical-align:top}
+table.ledger td.amt{text-align:right;font-family:var(--f-mono);white-space:nowrap}
+.gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px}
+.gallery figure{margin:0;background:var(--paper);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.gallery img{width:100%;aspect-ratio:4/3;object-fit:cover;display:block}
+.gallery figcaption{padding:6px 8px;font-size:12.5px}
+.hist{list-style:none;padding:0;margin:0;display:grid}
+.hist li{display:grid;grid-template-columns:96px minmax(0,1fr);gap:10px;padding:9px 0;border-bottom:1px solid var(--line);font-size:13.5px}
+.hist .at{font-size:12px;color:var(--muted)}
+.hist .chg{font-size:12.5px;color:var(--muted)}
+.empty{border:1px dashed var(--line);border-radius:var(--r);padding:16px;color:var(--muted);font-size:13.5px}
+.banner{background:var(--warn-soft);color:var(--ink);border-radius:var(--r);padding:10px 12px;font-size:13.5px;margin-bottom:10px}
+/* setup overlay */
+.overlay{position:fixed;inset:0;background:color-mix(in srgb,var(--ink) 45%,transparent);display:grid;place-items:center;padding:max(16px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(16px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));z-index:10}
+.sheet{background:var(--paper);border-radius:10px;max-width:620px;width:100%;max-height:100%;overflow-y:auto;padding:20px;display:grid;gap:12px}
+.sheet label{display:grid;gap:4px;font-size:13px;font-weight:600}
+.sheet input,.sheet textarea{border:1px solid var(--line);border-radius:var(--r);padding:8px 10px;background:var(--bg);font-weight:400;font-size:14px}
+.sheet .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.sheet .acts{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+.drop{border:1.5px dashed var(--line);border-radius:var(--r);padding:14px;display:grid;gap:8px;background:var(--bg)}
+.drop.over{border-color:var(--accent);background:var(--accent-soft)}
+.drop .hint{font-size:13px;color:var(--muted);font-weight:400}
+.drop .pick{justify-self:start}
+.flist{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.flist li{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 10px;background:var(--paper);border:1px solid var(--line);border-radius:var(--r);padding:8px 10px;font-size:13.5px;font-weight:400}
+.flist .fn{font-weight:600;overflow-wrap:anywhere}
+.flist .fs{grid-column:1/-1;font-size:12.5px;color:var(--muted)}
+.flist .fs.err{color:var(--bad)}
+.flist .fs.ok{color:var(--ok)}
+.flist button{background:none;border:0;color:var(--muted);font-size:12.5px;text-decoration:underline;padding:0}
+.docc{background:var(--paper);border:1px solid var(--line);border-radius:var(--r);padding:12px;display:grid;gap:6px}
+.docc .hd{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+.docc .nm{font-weight:600;overflow-wrap:anywhere}
+.docc .sm{font-size:13.5px;max-width:68ch}
+.docc details summary{cursor:pointer;font-size:13px;color:var(--accent);font-weight:500}
+.facts{display:grid;gap:10px;margin-top:8px}
+.facts h4{margin:0 0 2px;font-family:var(--f-display);font-weight:700;font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.facts ul{margin:0;padding-left:18px;font-size:13.5px;display:grid;gap:2px}
+.src{font-size:12px;color:var(--muted)}
+.tabs .s{display:none}
+.tabs button{position:relative}
+.badge{position:absolute;top:2px;right:0;min-width:17px;height:17px;padding:0 4px;border-radius:9px;background:var(--bad);color:#fff;font:600 10.5px/17px var(--f-body);letter-spacing:0;text-transform:none}
+.menu-btn{display:none}
+.hacts{display:flex;gap:8px;flex-wrap:wrap}
+header.top{position:relative}
+.upmore{background:none;border:0;padding:4px 0 0;color:var(--accent);font-size:13px;font-weight:500}
+@media (max-width:860px){
+  :root{--tabh:56px}
+  .app{padding-bottom:calc(var(--tabh) + env(safe-area-inset-bottom,0px))}
+  body.typing .app{padding-bottom:0}
+  header.top{padding-block:8px;gap:8px;flex-wrap:nowrap}
+  .brand{font-size:17px;min-width:0}
+  .brand small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:62vw}
+  .menu-btn{display:inline-block;min-height:40px;flex:none}
+  .hacts{display:none;position:absolute;right:0;top:calc(100% + 4px);z-index:20;flex-direction:column;background:var(--paper);border:1px solid var(--line);border-radius:var(--r);padding:6px;box-shadow:0 8px 24px color-mix(in srgb,var(--ink) 18%,transparent)}
+  .hacts.open{display:flex}
+  .hacts .ghost{border:0;text-align:left;min-height:44px;font-size:15px}
+  .main{grid-template-columns:minmax(0,1fr);gap:0;padding-block:8px}
+  .main{grid-template-rows:auto minmax(0,1fr)}
+  body:not([data-view="chat"]) .main{grid-template-rows:minmax(0,1fr)}
+  .panel{order:-1;grid-template-rows:minmax(0,1fr)}
+  body[data-view="chat"] .panel .pane{display:none}
+  body:not([data-view="chat"]) .chat{display:none}
+  .tabs .mob{display:inline-flex}
+  .tabs{position:fixed;left:0;right:0;bottom:0;z-index:15;margin:0;flex-wrap:nowrap;gap:0;background:var(--paper);border-top:1px solid var(--line);border-bottom:0;
+    padding:0 max(4px,env(safe-area-inset-right,0px)) env(safe-area-inset-bottom,0px) max(4px,env(safe-area-inset-left,0px))}
+  body.typing .tabs{display:none}
+  .tabs button{flex:1 1 0;min-width:0;height:var(--tabh);display:inline-flex;align-items:center;justify-content:center;padding:0 2px;border-bottom:0;border-top:3px solid transparent;font-size:11.5px;letter-spacing:.03em}
+  .tabs button[aria-selected="true"]{border-top-color:var(--accent);border-bottom-color:transparent}
+  .tabs .l{display:none} .tabs .s{display:inline}
+  .badge{top:6px;right:calc(50% - 30px)}
+  .chat{border-radius:var(--r)}
+  .upnext{padding:10px 12px}
+  .msgs{padding:12px 10px}
+  .msg{max-width:94%}
+  .composer{padding:8px}
+  .composer textarea{font-size:16px}
+  .attach{width:44px;height:44px}
+  .btn{min-height:44px;padding:8px 16px;font-size:15px}
+  .card .acts .btn{flex:1}
+  .chip{min-height:34px;font-size:13.5px}
+  .chips{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
+  .chips .chip{flex:none}
+  .pane{padding-top:6px}
+  h2.sect{font-size:20px}
+  .dec{grid-template-columns:minmax(0,1fr)}
+  .dec select{width:100%;min-height:40px;font-size:15px}
+  .seg{display:flex}
+  .seg button{flex:1;min-height:38px}
+  .tabs,.tablewrap{scrollbar-width:none}
+  table.ledger thead{display:none}
+  table.ledger,table.ledger tbody{display:block}
+  table.ledger tr{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 10px;padding:10px 0;border-bottom:1px solid var(--line)}
+  table.ledger td{border:0;padding:0}
+  table.ledger td:nth-child(1){grid-column:1;font-size:12.5px;color:var(--muted)}
+  table.ledger td:nth-child(2){grid-column:1;font-weight:600}
+  table.ledger td:nth-child(3){grid-column:1/-1;font-size:13.5px}
+  table.ledger td:nth-child(4){grid-column:1/-1;font-size:12.5px;color:var(--muted)}
+  table.ledger td.amt{grid-column:2;grid-row:1/3;align-self:center;font-size:15px}
+  .gallery{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .hist li{grid-template-columns:minmax(0,1fr);gap:2px}
+  .totals{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .tot b{font-size:16px}
+  .overlay{padding:0;place-items:stretch}
+  .sheet{max-width:none;border-radius:0;height:100%;padding:max(16px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(20px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));align-content:start}
+  .sheet .two{grid-template-columns:1fr}
+  .sheet input,.sheet textarea{font-size:16px;min-height:44px}
+  .sheet .acts{position:sticky;bottom:calc(-1 * max(20px,env(safe-area-inset-bottom,0px)));background:var(--paper);padding-block:10px;margin-inline:-4px}
+  .sheet .acts .btn{flex:1}
+  .drop .pick{justify-self:stretch;text-align:center;display:flex;align-items:center;justify-content:center}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+.dots::after{content:"…";animation:blink 1.2s infinite}
+@keyframes blink{50%{opacity:.2}}
+</style>
+
+<div class="app">
+  <header class="top">
+    <div class="brand" id="projName">Reno Logbook<small id="projSub">Loading your project</small></div>
+    <span class="spacer"></span>
+    <button class="ghost menu-btn" id="btnMenu" type="button" aria-expanded="false" aria-controls="hacts">Menu</button>
+    <div class="hacts" id="hacts">
+      <button class="ghost" id="btnExport" type="button">Export backup</button>
+      <button class="ghost" id="btnNew" type="button">Start a new project</button>
+    </div>
+  </header>
+  <div class="main">
+    <section class="chat" aria-label="Chat">
+      <div class="upnext" id="upnext"><div class="eyebrow">Up next</div><div class="note">Loading…</div></div>
+      <div class="msgs" id="msgs" aria-live="polite"></div>
+      <form class="composer" id="composer">
+        <div class="thumbs" id="thumbs"></div>
+        <div class="chips" id="chips"></div>
+        <div class="row">
+          <label class="attach" title="Add photos of invoices, samples or progress" id="attachLbl">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h3l2-3h6l2 3h3v13H4z"/><circle cx="12" cy="13" r="4"/></svg>
+            <input type="file" id="fileIn" accept="image/*" multiple hidden>
+            <span class="sr" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Add photos</span>
+          </label>
+          <textarea id="box" rows="1" placeholder="Tell me what happened, or drop in an invoice photo…"></textarea>
+          <button class="btn" id="send" type="submit">Send</button>
+        </div>
+        <div class="note" id="status"></div>
+      </form>
+    </section>
+    <section class="panel" aria-label="Project record">
+      <nav class="tabs" role="tablist" id="tabs">
+        <button class="mob" data-v="chat" role="tab"><span class="l">Chat</span><span class="s">Chat</span></button>
+        <button data-v="decisions" role="tab"><span class="l">Decisions</span><span class="s">Decide</span><b class="badge" id="decBadge" hidden></b></button>
+        <button data-v="schedule" role="tab"><span class="l">Schedule</span><span class="s">Dates</span></button>
+        <button data-v="budget" role="tab"><span class="l">Budget</span><span class="s">Money</span></button>
+        <button data-v="photos" role="tab"><span class="l">Photos</span><span class="s">Photos</span></button>
+        <button data-v="docs" role="tab"><span class="l">Documents</span><span class="s">Docs</span></button>
+        <button data-v="history" role="tab"><span class="l">History</span><span class="s">Log</span></button>
+      </nav>
+      <div class="pane" id="pane"></div>
+    </section>
+  </div>
+</div>
+<div class="overlay" id="overlay" hidden></div>
+
+<script>
+// ---------- constants ----------
+const MILESTONES = [
+  {id:"roughIn",   label:"Rough-in",        ex:"Plumbing, wiring and ducts run inside open walls. Anything that needs a pipe, wire or box in the wall must be decided before this."},
+  {id:"drywall",   label:"Walls close",     ex:"Drywall goes up. After this, moving an outlet, valve or light means cutting walls open again."},
+  {id:"cabinets",  label:"Cabinets in",     ex:"Cabinets arrive and get installed. They are often ordered 8–12 weeks ahead."},
+  {id:"countertops",label:"Countertops templated",ex:"The fabricator measures installed cabinets. Slab, edge and sink must be chosen by then."},
+  {id:"finish",    label:"Finish work",     ex:"Tile, trim, paint, fixtures, hardware and lights go in."},
+  {id:"moveIn",    label:"Move-in",         ex:"Punch list done, final inspection, certificate of occupancy."}
+];
+const MS = Object.fromEntries(MILESTONES.map(m=>[m.id,m]));
+const STATUSES = [
+  ["not_started","Not started"],["exploring","Exploring"],["decided","Decided"],
+  ["ordered","Ordered"],["delivered","Delivered"],["installed","Installed"]];
+const STATUS_LABEL = Object.fromEntries(STATUSES);
+const OPEN = new Set(["not_started","exploring"]);
+const CHOSEN = new Set(["decided","ordered","delivered","installed"]);
+const BUCKET_KIND = {contract:"In the contract",allowance:"Allowance",owner:"You buy directly",contingency:"Cushion"};
+
+// Master library the setup interview draws from (template, not project data)
+const LIBRARY = [
+ ["Plumbing fixtures","Shower valve and trim","bath","roughIn",4,"The valve body is set inside the wall at rough-in and must match the trim you pick."],
+ ["Plumbing fixtures","Tub (freestanding or alcove)","bath","roughIn",6,"Drain location and floor framing depend on the exact tub."],
+ ["Plumbing fixtures","Toilet model and rough-in size","bath","roughIn",3,"The drain is placed 10, 12 or 14 inches from the wall to fit a specific toilet."],
+ ["Plumbing fixtures","Vanity size and sink type","bath","roughIn",6,"Supply and drain heights depend on vanity width and sink style."],
+ ["Plumbing fixtures","Kitchen sink and faucet","kitchen","roughIn",4,"Sink width sets the base cabinet; faucet holes affect the counter."],
+ ["Plumbing fixtures","Pot filler (yes/no)","kitchen","roughIn",2,"Needs a water line run during rough-in."],
+ ["Electrical","Outlet, switch and USB locations","whole","roughIn",1,"The electrician sets boxes at rough-in. Walk the house with them."],
+ ["Electrical","Recessed and ceiling light layout","whole","roughIn",2,"Cans and junction boxes are placed before insulation."],
+ ["Electrical","Under-cabinet lighting","kitchen","roughIn",1,"Needs wiring before walls close."],
+ ["Electrical","TV, speaker and data locations","whole","roughIn",1,"Low-voltage wiring and blocking go in before drywall."],
+ ["Electrical","Exterior lights and outlets","exterior","roughIn",2,"Boxes are set in the framing."],
+ ["Electrical","Heated bathroom floor (yes/no)","bath","roughIn",2,"Needs its own circuit and thermostat location."],
+ ["HVAC","Register and return locations","whole","roughIn",1,"Ducts run at rough-in; registers in the wrong spot block furniture."],
+ ["HVAC","Bath fan model","bath","roughIn",2,"Duct size and route depend on the fan."],
+ ["HVAC","Range hood type and CFM","kitchen","roughIn",4,"Duct size, make-up air and wiring depend on the hood."],
+ ["Framing","Blocking for TVs, grab bars, heavy mirrors","whole","drywall",1,"Wood backing inside the wall. Cheap now, expensive later."],
+ ["Framing","Shower niche size and location","bath","drywall",1,"Framed before the shower walls are boarded."],
+ ["Exterior","Windows and exterior doors","exterior","roughIn",12,"Long lead time; openings are framed to the exact unit."],
+ ["Exterior","Siding and trim material","exterior","drywall",6,"Ordered while the shell is weathered in."],
+ ["Exterior","Roofing material and color","exterior","roughIn",4,"Usually installed early to dry in the house."],
+ ["Insulation","Insulation type","whole","drywall",2,"Spray foam vs. batts affects cost and energy rebates."],
+ ["Cabinets","Kitchen cabinet layout and style","kitchen","cabinets",10,"Custom and semi-custom boxes take 8–12 weeks."],
+ ["Cabinets","Cabinet paint or stain color","kitchen","cabinets",10,"Needed to place the cabinet order."],
+ ["Cabinets","Bathroom vanity order","bath","cabinets",8,"Ordered with or alongside kitchen cabinets."],
+ ["Appliances","Appliance package (models)","kitchen","cabinets",10,"Cabinet openings are built around exact model dimensions."],
+ ["Countertops","Countertop material and slab","kitchen","countertops",3,"Choose and hold the slab before templating."],
+ ["Countertops","Edge profile","kitchen","countertops",1,"Needed at templating."],
+ ["Countertops","Bathroom counter material","bath","countertops",3,"Templated with the kitchen if possible."],
+ ["Tile","Shower wall tile","bath","finish",6,"Special-order tile can take 4–8 weeks."],
+ ["Tile","Bathroom floor tile","bath","finish",6,"Thickness affects the door and threshold heights."],
+ ["Tile","Kitchen backsplash","kitchen","finish",4,"Affects outlet box depth; tile goes in after counters."],
+ ["Tile","Grout color","bath","finish",1,"Easy to forget; the tile setter will ask on install day."],
+ ["Flooring","Main floor material","whole","finish",6,"Hardwood needs to acclimate in the house for 1–2 weeks."],
+ ["Flooring","Stain color (if site-finished)","whole","finish",1,"Do samples on your actual floor."],
+ ["Doors & trim","Interior door style","whole","finish",6,"Pre-hung doors are ordered by size and swing."],
+ ["Doors & trim","Trim and casing profile","whole","finish",3,"Ordered as a package by the carpenter."],
+ ["Hardware","Door hardware finish and style","whole","finish",4,"Every door needs passage, privacy or dummy sets."],
+ ["Hardware","Cabinet pulls and knobs","kitchen","finish",3,"Count every drawer and door."],
+ ["Hardware","Bath accessories (towel bars, hooks, TP)","bath","drywall",2,"Placement needs blocking before drywall."],
+ ["Lighting","Decorative fixtures (pendants, sconces)","whole","finish",6,"Sconce height must be set at rough-in; fixtures can come later."],
+ ["Paint","Paint colors and sheens","whole","finish",2,"Painter needs a full schedule by room."],
+ ["Paint","Exterior paint colors","exterior","finish",2,"Weather-dependent; decide early."],
+ ["Glass","Shower glass","bath","finish",3,"Measured after tile is complete; 2–3 week lead."],
+ ["Closets","Closet system","whole","finish",4,"Needs blocking if wall-hung."],
+ ["Window treatments","Shades and blinds","whole","moveIn",6,"Some need blocking or wiring at rough-in (motorized)."]
+];
+
+// ---------- helpers ----------
+const $ = s=>document.querySelector(s);
+const esc = s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const money = n=>(n<0?"−":"")+"$"+Math.round(Math.abs(n||0)).toLocaleString("en-US");
+const todayISO = ()=>{const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")};
+const parseD = s=>{if(!s)return null;const [y,m,d]=s.split("-").map(Number);return new Date(y,m-1,d)};
+const iso = d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+const addDays=(s,n)=>{const d=parseD(s);d.setDate(d.getDate()+n);return iso(d)};
+const daysUntil = s=>Math.round((parseD(s)-parseD(todayISO()))/864e5);
+const fmtD = s=>s?parseD(s).toLocaleDateString("en-US",{month:"short",day:"numeric"}):"—";
+const fmtTs = s=>new Date(s).toLocaleString("en-US",{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"});
+const blobUrl = id=>"/_blob/"+id;
+const store = {get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
+
+// ---------- state ----------
+const S = {project:null,decisions:[],buckets:[],ledger:[],log:[],photos:[],messages:[],docs:[],doctext:[],loaded:{},setupDocs:[],
+  view: store.get("rl.view") || (matchMedia("(max-width:860px)").matches ? "chat" : "decisions"), decGroup: store.get("rl.decGroup") || "deadline",
+  pendingFiles:[], busy:false};
+let db=null, sample=null, assets=null, downloads=null, userCap=null;
+
+function decideBy(d){
+  if(d.dueDate) return d.dueDate;
+  const m = S.project?.milestones?.[d.milestone];
+  if(!m) return null;
+  return addDays(m, -7*(Number(d.leadWeeks)||0));
+}
+function bucketStats(b){
+  const paid = S.ledger.filter(l=>l.bucketId===b.id).reduce((a,l)=>a+(Number(l.amount)||0),0);
+  const chosen = S.decisions.filter(d=>d.bucketId===b.id && CHOSEN.has(d.status)).reduce((a,d)=>a+(Number(d.cost)||0),0);
+  const used = b.kind==="allowance" ? Math.max(paid,chosen) : paid;
+  return {paid,chosen,used,left:(Number(b.budget)||0)-used};
+}
+
+// ---------- boot ----------
+(async function boot(){
+  if(!window.claude){ showOffline("Open this page from Claude to use it. It saves your project and talks to Claude through the Claude viewer."); return; }
+  [db, sample, assets, downloads, userCap] = await Promise.all(["db","sample","assets","downloads","user"].map(n=>claude.use(n).catch(()=>null)));
+  if(!db){ showOffline("Sign in to Claude to load your project. Your project record is saved to your account, so the page needs a signed-in view."); return; }
+  if(!assets){ $("#attachLbl").title="Photos can be read but not stored in this view"; }
+  if(sample){ try{ const lim = await sample.limits(); if(!lim?.images){ $("#attachLbl").hidden=true; } else { $("#fileIn").accept = lim.images.mediaTypes.join(","); S.imgMax=lim.images.maxCount; } }catch(e){ $("#attachLbl").hidden=true; } }
+  else { $("#attachLbl").hidden=true; $("#status").textContent="Chat needs Claude access in this view. You can still browse and edit the record."; }
+  if(!downloads) $("#btnExport").hidden=true;
+  const sub = (name,q,key)=>q.onSnapshot(snap=>{ S[key]=snap.docs.map(d=>({id:d.id,...d.data()})); S.loaded[key]=true; render(); }, err=>{ S.loaded[key]=true; setStatus("Couldn't load "+name+": "+(err?.message||err?.code)); });
+  db.doc("project/main").onSnapshot(s=>{ S.project = s.exists? s.data(): null; S.loaded.project=true; render(); maybeSetup(); });
+  sub("decisions", db.collection("decisions"), "decisions");
+  sub("budget", db.collection("buckets"), "buckets");
+  sub("ledger", db.collection("ledger").orderBy("date","desc"), "ledger");
+  sub("history", db.collection("log").orderBy("at","desc").limit(300), "log");
+  sub("photos", db.collection("photos").orderBy("at","desc"), "photos");
+  sub("documents", db.collection("docs").orderBy("at","asc"), "docs");
+  sub("document text", db.collection("doctext"), "doctext");
+  db.collection("messages").orderBy("at","desc").limit(80).onSnapshot(snap=>{ S.messages = snap.docs.map(d=>({id:d.id,...d.data()})).reverse(); S.loaded.messages=true; renderMsgs(); });
+})();
+
+function showOffline(t){ $("#projSub").textContent=t; $("#upnext").innerHTML='<div class="eyebrow">Up next</div><div class="note">'+esc(t)+'</div>'; $("#send").disabled=true; render(); }
+function setStatus(t,busy){ const el=$("#status"); el.textContent=t||""; el.classList.toggle("dots",!!busy); }
+
+// ---------- render ----------
+function render(){
+  const p=S.project;
+  if(p){ $("#projName").innerHTML = esc(p.name||"Your project")+'<small>'+esc([p.address,p.scope].filter(Boolean).join(" · "))+'</small>'; }
+  renderUpNext(); renderTabs(); renderPane();
+}
+function upNextItems(){
+  const items=[];
+  for(const d of S.decisions){
+    const by=decideBy(d); if(!by) continue; const n=daysUntil(by);
+    if(OPEN.has(d.status) && n<=21) items.push({n,txt:"Decide: "+d.title+" ("+d.room+")",sev:n<0?"bad":n<=7?"warn":""});
+    else if(d.status==="decided" && n<0 && d.leadWeeks>=3) items.push({n:n+0.5,txt:"Place the order: "+d.title+" ("+d.room+")",sev:"warn"});
+  }
+  for(const b of S.buckets){ const st=bucketStats(b); if(st.left<0) items.push({n:-999,txt:b.name+" is "+money(-st.left)+" over budget",sev:"bad"}); }
+  const pend = S.messages.reduce((a,m)=>a+(m.actions||[]).filter(x=>x.state==="pending").length,0);
+  if(pend) items.push({n:-1000,txt:pend+" update"+(pend>1?"s":"")+" waiting for you to confirm in the chat",sev:"warn"});
+  return items.sort((a,b)=>a.n-b.n);
+}
+function renderUpNext(){
+  if(!S.project){ return; }
+  const items=upNextItems();
+  const narrow=matchMedia("(max-width:860px)").matches;
+  const show=items.slice(0,(narrow&&!S.upAll)?2:4);
+  $("#upnext").innerHTML='<div class="eyebrow">Up next'+(items.length>4?' · '+items.length+' items':'')+'</div>'+
+   (show.length? '<ul>'+show.map(i=>'<li><span class="when num due '+i.sev+'">'+(i.n<=-999?'Now':i.n<0?Math.round(-i.n)+'d late':i.n===0?'Today':'in '+Math.round(i.n)+'d')+'</span><span>'+esc(i.txt)+'</span></li>').join("")+'</ul>'+(narrow&&items.length>2?'<button type="button" class="upmore" id="upMore">'+(S.upAll?'Show less':'Show all '+Math.min(items.length,4))+'</button>':'') : '<div class="note">Nothing due in the next three weeks.</div>');
+  const od=S.decisions.filter(d=>OPEN.has(d.status)&&decideBy(d)&&daysUntil(decideBy(d))<0).length;
+  const bd=$("#decBadge"); if(bd){ bd.hidden=!od; bd.textContent=od; bd.setAttribute("aria-label",od+" overdue"); }
+}
+function renderTabs(){
+  const narrow = matchMedia("(max-width:860px)").matches;
+  let v=S.view; if(v==="chat" && !narrow) v=S.view="decisions";
+  document.body.dataset.view = v;
+  for(const b of $("#tabs").children) b.setAttribute("aria-selected", b.dataset.v===v);
+}
+$("#tabs").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;S.view=b.dataset.v;store.set("rl.view",S.view);render();$("#pane").scrollTop=0;if(S.view==="chat"){const m=$("#msgs");m.scrollTop=m.scrollHeight;}});
+addEventListener("resize",()=>{renderTabs();renderUpNext();});
+$("#upnext").addEventListener("click",e=>{ if(e.target.id==="upMore"){ S.upAll=!S.upAll; renderUpNext(); }});
+$("#btnMenu").addEventListener("click",e=>{ e.stopPropagation(); const h=$("#hacts"); const o=h.classList.toggle("open"); e.currentTarget.setAttribute("aria-expanded",o); });
+document.addEventListener("click",e=>{ if(!e.target.closest("#hacts")){ $("#hacts").classList.remove("open"); $("#btnMenu").setAttribute("aria-expanded","false"); }});
+$("#box").addEventListener("focus",()=>{ if(matchMedia("(max-width:860px)").matches) document.body.classList.add("typing"); });
+$("#box").addEventListener("blur",()=>setTimeout(()=>document.body.classList.remove("typing"),120));
+// Keep the newest message in view when the phone keyboard resizes the screen.
+if(window.visualViewport) visualViewport.addEventListener("resize",()=>{ const m=$("#msgs"); if(document.activeElement===$("#box")) m.scrollTop=m.scrollHeight; });
+
+function renderPane(){
+  const pane=$("#pane");
+  if(!S.loaded.project){ pane.innerHTML='<div class="empty">Loading your project…</div>'; return; }
+  if(!S.project){ pane.innerHTML='<h2 class="sect">No project yet</h2><p class="lede">Describe your renovation and the app builds your decision map: every choice you will need to make, when it is due, and why.</p><button class="btn" type="button" onclick="openSetup()">Set up my project</button>'; return; }
+  const v=S.view==="chat"?"decisions":S.view;
+  pane.innerHTML = ({decisions:paneDecisions,schedule:paneSchedule,budget:paneBudget,photos:panePhotos,docs:paneDocs,history:paneHistory}[v]||paneDecisions)();
+}
+
+function decCard(d){
+  const by=decideBy(d); const n=by!=null?daysUntil(by):null;
+  const open=OPEN.has(d.status);
+  const cls = open && n!=null ? (n<0?"overdue":n<=14?"soon":"") : "";
+  const dueCls = open && n!=null ? (n<0?"bad":n<=14?"warn":"") : "";
+  const dueTxt = by? (open? (n<0? "Was due "+fmtD(by)+" · "+(-n)+"d late" : "Decide by "+fmtD(by)+(n<=30?" · "+n+"d":"")) : "Was due "+fmtD(by)) : "";
+  const b=S.buckets.find(x=>x.id===d.bucketId);
+  return '<div class="dec '+cls+'"><div><div class="t">'+esc(d.title)+'</div><div class="meta"><span>'+esc(d.room)+'</span><span>'+esc(d.category||"")+'</span>'+(d.leadWeeks?'<span class="num">'+d.leadWeeks+' wk lead</span>':'')+'<span>before '+esc(MS[d.milestone]?.label||"")+'</span></div></div>'+
+   '<select aria-label="Status for '+esc(d.title)+'" data-dec="'+esc(d.id)+'">'+STATUSES.map(([k,l])=>'<option value="'+k+'"'+(k===d.status?' selected':'')+'>'+l+'</option>').join("")+'</select>'+
+   (dueTxt?'<div class="due num '+dueCls+'" style="grid-column:1/-1">'+esc(dueTxt)+'</div>':'')+
+   (d.selection?'<div class="sel"><b>Picked:</b> '+esc(d.selection)+(d.cost?' · <span class="num">'+money(d.cost)+'</span>':'')+(b?' <span class="pill">'+esc(b.name)+'</span>':'')+'</div>':'')+
+   (open && d.why?'<div class="why">'+esc(d.why)+'</div>':'')+
+   (d.source?'<div class="src" style="grid-column:1/-1">From: '+esc(d.source)+'</div>':'')+'</div>';
+}
+function paneDecisions(){
+  const g=S.decGroup; const ds=[...S.decisions];
+  const total=ds.length, done=ds.filter(d=>CHOSEN.has(d.status)).length;
+  let html='<h2 class="sect">Decisions</h2><p class="lede"><span class="num">'+done+' of '+total+'</span> made. Deadlines are worked back from the schedule, so when a date moves, these move with it.</p>'+
+   '<div class="seg" role="group" aria-label="Group decisions">'+[["deadline","By deadline"],["room","By room"],["milestone","By stage"]].map(([k,l])=>'<button type="button" data-grp="'+k+'" aria-pressed="'+(g===k)+'">'+l+'</button>').join("")+'</div>';
+  if(!total) return html+'<div class="empty">No decisions yet. Tell the chat about your project scope and it will suggest them.</div>';
+  const sortBy=(a,b)=>(decideBy(a)||"9").localeCompare(decideBy(b)||"9");
+  let groups=[];
+  if(g==="deadline"){
+    const open=ds.filter(d=>OPEN.has(d.status)).sort(sortBy), made=ds.filter(d=>!OPEN.has(d.status)).sort(sortBy);
+    groups=[["Overdue",open.filter(d=>daysUntil(decideBy(d))<0)],["Next 3 weeks",open.filter(d=>{const n=daysUntil(decideBy(d));return n>=0&&n<=21})],["Later",open.filter(d=>daysUntil(decideBy(d))>21)],["Made",made]];
+  } else if(g==="room"){
+    const rooms=[...new Set(ds.map(d=>d.room))].sort();
+    groups=rooms.map(r=>[r,ds.filter(d=>d.room===r).sort(sortBy)]);
+  } else {
+    groups=MILESTONES.map(m=>["Before "+m.label.toLowerCase(),ds.filter(d=>d.milestone===m.id).sort(sortBy),m]);
+  }
+  for(const [name,list,m] of groups){ if(!list.length) continue;
+    const open=list.filter(d=>OPEN.has(d.status)).length;
+    html+='<h3 class="grp"><span>'+esc(name)+'</span><span class="num">'+(g==="deadline"?list.length:open+' open / '+list.length)+'</span></h3>'+(m?'<p class="lede" style="font-size:13px">'+esc(m.ex)+'</p>':'')+'<div class="dlist">'+list.map(decCard).join("")+'</div>'; }
+  return html;
+}
+function paneSchedule(){
+  const ms=S.project.milestones||{};
+  let html='<h2 class="sect">Schedule</h2><p class="lede">The key moments that set your decision deadlines. Tell the chat when your contractor moves a date and every deadline tied to it shifts.</p><div class="dlist">';
+  for(const m of MILESTONES){ const d=ms[m.id]; const n=d?daysUntil(d):null;
+    const cnt=S.decisions.filter(x=>x.milestone===m.id&&OPEN.has(x.status)).length;
+    html+='<div class="ms"><span class="d num">'+fmtD(d)+'</span><span class="lbl">'+esc(m.label)+'</span><span class="note num">'+(n==null?'':n<0?'done':'in '+n+'d')+'</span><span class="ex">'+esc(m.ex)+(cnt?' <b>'+cnt+' open decision'+(cnt>1?'s':'')+' tied to this.</b>':'')+'</span></div>'; }
+  return html+'</div>';
+}
+function paneBudget(){
+  const bs=[...S.buckets].sort((a,b)=>Object.keys(BUCKET_KIND).indexOf(a.kind)-Object.keys(BUCKET_KIND).indexOf(b.kind));
+  const tb=bs.reduce((a,b)=>a+(Number(b.budget)||0),0), tp=S.ledger.reduce((a,l)=>a+(Number(l.amount)||0),0);
+  const cush=bs.find(b=>b.kind==="contingency"); const cs=cush?bucketStats(cush):null;
+  let html='<h2 class="sect">Budget</h2><p class="lede">Money is split the way your contract splits it. Allowances count your chosen items as spent the moment you pick them, so you see an overage before the invoice arrives.</p>'+
+   '<div class="totals"><div class="tot"><b>'+money(tb)+'</b><span>Total budget</span></div><div class="tot"><b>'+money(tp)+'</b><span>Paid so far</span></div>'+(cs?'<div class="tot"><b>'+money(cs.left)+'</b><span>Cushion left</span></div>':'')+'</div>';
+  for(const kind of Object.keys(BUCKET_KIND)){ const list=bs.filter(b=>b.kind===kind); if(!list.length) continue;
+    html+='<h3 class="grp"><span>'+BUCKET_KIND[kind]+'</span></h3><div class="bars">';
+    for(const b of list){ const st=bucketStats(b); const pct=b.budget?Math.min(100,st.used/b.budget*100):0;
+      html+='<div class="bucket"><div class="hd"><span class="nm">'+esc(b.name)+'</span><span class="num">'+money(st.used)+' / '+money(b.budget)+'</span></div><div class="meter"><i class="'+(st.left<0?'over':'')+'" style="width:'+pct+'%"></i></div><div class="sub"><span>Paid <span class="num">'+money(st.paid)+'</span></span>'+(kind==="allowance"?'<span>Chosen <span class="num">'+money(st.chosen)+'</span></span>':'')+'<span class="'+(st.left<0?'due bad':'')+'">'+(st.left<0?'Over by ':'Left ')+'<span class="num">'+money(Math.abs(st.left))+'</span></span></div></div>'; }
+    html+='</div>'; }
+  html+='<h3 class="grp"><span>Invoices and payments</span><span class="num">'+S.ledger.length+'</span></h3>';
+  if(!S.ledger.length) return html+'<div class="empty">No invoices yet. Snap a photo of one in the chat.</div>';
+  html+='<div class="tablewrap"><table class="ledger"><thead><tr><th>Date</th><th>Vendor</th><th>What</th><th>Bucket</th><th style="text-align:right">Amount</th></tr></thead><tbody>'+
+   S.ledger.map(l=>'<tr><td class="num">'+fmtD(l.date)+'</td><td>'+esc(l.vendor)+'</td><td>'+esc(l.description||"")+(l.assetId?' · <a href="'+blobUrl(l.assetId)+'" target="_blank" rel="noopener">original</a>':'')+((l.flags||[]).length?'<div class="flags" style="margin-top:4px">'+l.flags.map(f=>'<span class="flag">'+esc(f)+'</span>').join("")+'</div>':'')+'</td><td>'+esc(S.buckets.find(b=>b.id===l.bucketId)?.name||"—")+'</td><td class="amt">'+money(l.amount)+'</td></tr>').join("")+'</tbody></table></div>';
+  return html;
+}
+function panePhotos(){
+  let html='<h2 class="sect">Photos</h2><p class="lede">Progress shots and samples, filed by room and date. Photos of open walls before drywall are the most useful ones you will ever take.</p>';
+  if(!S.photos.length) return html+'<div class="empty">No photos yet. Add one in the chat and say what room it is.</div>';
+  const rooms=[...new Set(S.photos.map(p=>p.room||"Other"))];
+  for(const r of rooms){ html+='<h3 class="grp"><span>'+esc(r)+'</span></h3><div class="gallery">'+S.photos.filter(p=>(p.room||"Other")===r).map(p=>'<figure><a href="'+blobUrl(p.assetId)+'" target="_blank" rel="noopener"><img src="'+blobUrl(p.assetId)+'" alt="'+esc(p.caption)+'" loading="lazy"></a><figcaption><span class="num note">'+fmtD(p.date||p.at?.slice(0,10))+'</span><br>'+esc(p.caption)+'</figcaption></figure>').join("")+'</div>'; }
+  return html;
+}
+function factsHtml(facts){
+  const by={}; for(const f of facts||[]) (by[f.topic||"Other"]=by[f.topic||"Other"]||[]).push(f);
+  return '<div class="facts">'+Object.entries(by).map(([t,fs])=>'<div><h4>'+esc(t)+'</h4><ul>'+fs.map(f=>'<li>'+esc(f.detail)+(f.page?' <span class="src">p.'+esc(f.page)+'</span>':'')+'</li>').join("")+'</ul></div>').join("")+'</div>';
+}
+function paneDocs(){
+  let html='<h2 class="sect">Documents</h2><p class="lede">Plans, contracts, specs and estimates. The chat reads these when you ask questions, and points to the page it found the answer on.</p>'+
+    '<div class="drop" id="docDrop"><span class="hint">Add a PDF, Word file, text file or a photo of a page. Large drawing sets can take a minute to read.</span><label class="btn pick" for="docIn">Add a document</label><input type="file" id="docIn" multiple hidden accept=".pdf,.docx,.txt,.md,.csv,image/*"><ul class="flist" id="docQueue">'+(S.docQueue||[]).map(fileRow).join("")+'</ul></div>';
+  if(!S.docs.length) return html+'<div class="empty" style="margin-top:12px">No documents yet. Your contract and your architect\'s plans are the two most useful to add.</div>';
+  html+='<div class="dlist" style="margin-top:12px">';
+  for(const d of S.docs){
+    html+='<div class="docc"><div class="hd"><span class="nm">'+esc(d.title||d.name)+'</span><span class="pill">'+esc(d.kind||"document")+'</span><span class="src num">'+(d.pages?d.pages+' page'+(d.pages>1?'s':''):'')+'</span>'+(d.assetId?'<a class="src" href="'+blobUrl(d.assetId)+'" target="_blank" rel="noopener">Open original</a>':'<span class="src">Original not stored</span>')+'</div>'+
+      (d.summary?'<div class="sm">'+esc(d.summary)+'</div>':'')+
+      ((d.facts||[]).length?'<details><summary>What it says ('+d.facts.length+' points)</summary>'+factsHtml(d.facts)+'</details>':'')+
+      (d.truncated?'<div class="src">Very long document: only the first part is searchable.</div>':'')+'</div>';
+  }
+  return html+'</div>';
+}
+function fileRow(q,i){ return '<li><span class="fn">'+esc(q.name)+'</span>'+(q.removable?'<button type="button" data-rmdoc="'+i+'">Remove</button>':'<span></span>')+'<span class="fs '+(q.error?'err':q.done?'ok':'')+'">'+esc(q.error||q.status||"")+'</span></li>'; }
+$("#pane").addEventListener("change",async e=>{
+  if(e.target.id!=="docIn") return;
+  const files=[...e.target.files]; e.target.value="";
+  S.docQueue=S.docQueue||[];
+  for(const f of files){ const q={name:f.name,status:"Waiting"}; S.docQueue.push(q); }
+  renderPane();
+  for(const f of files){ const q=S.docQueue.find(x=>x.name===f.name&&!x.done&&!x.error);
+    try{ const doc=await readDocument(f,t=>{q.status=t;refreshQueue();}); q.status="Saving"; refreshQueue(); await saveDocument(doc); q.done=true; q.status="Added. The chat can now use it."; }
+    catch(err){ q.error="Couldn't read it: "+(err?.message||err?.code||"unknown error"); }
+    refreshQueue(); }
+});
+function refreshQueue(){ const el=document.getElementById("docQueue"); if(el) el.innerHTML=(S.docQueue||[]).map(fileRow).join(""); }
+
+function paneHistory(){
+  let html='<h2 class="sect">History</h2><p class="lede">Every confirmed change, newest first. Nothing is overwritten: when a decision changes, the old choice stays here with the date.</p>';
+  if(!S.log.length) return html+'<div class="empty">Nothing logged yet.</div>';
+  return html+'<ul class="hist">'+S.log.map(e=>'<li><span class="at num">'+fmtTs(e.at)+'</span><div><div>'+esc(e.summary)+'</div>'+(e.before||e.after?'<div class="chg">'+(e.before?'Was: '+esc(e.before)+' · ':'')+(e.after?'Now: '+esc(e.after):'')+'</div>':'')+(e.reason?'<div class="chg">Why: '+esc(e.reason)+'</div>':'')+'</div></li>').join("")+'</ul>';
+}
+
+$("#pane").addEventListener("click",e=>{const b=e.target.closest("[data-grp]");if(b){S.decGroup=b.dataset.grp;store.set("rl.decGroup",S.decGroup);renderPane();}});
+$("#pane").addEventListener("change",async e=>{
+  const sel=e.target.closest("select[data-dec]"); if(!sel) return;
+  const d=S.decisions.find(x=>x.id===sel.dataset.dec); if(!d) return;
+  const before=STATUS_LABEL[d.status], after=STATUS_LABEL[sel.value];
+  try{ await db.doc("decisions/"+d.id).update({status:sel.value,updatedAt:new Date().toISOString()});
+    await addLog({type:"decision",summary:d.title+" ("+d.room+") marked "+after,before,after,ref:d.id}); }
+  catch(err){ setStatus("Couldn't save that change: "+(err.message||err.code)); sel.value=d.status; }
+});
+
+// ---------- chat ----------
+function actionView(a,mi,ai){
+  let kind="",what="",detail="",flags=a.flags||[];
+  const dec=S.decisions.find(d=>d.id===a.decisionId);
+  if(a.type==="log_invoice"){ kind="Invoice"; what=(a.vendor||"Vendor")+" · "+money(a.amount); const b=S.buckets.find(x=>x.id===a.bucketId);
+    detail=[fmtD(a.date),a.description,b?"counts against "+b.name:null].filter(Boolean).join(" · ");
+    if(b&&a.state==="pending"){ const st=bucketStats(b); if(st.left-(Number(a.amount)||0)<0 && b.kind!=="contract") flags=[...flags,"Puts "+b.name+" over budget"]; } }
+  else if(a.type==="update_decision"){ kind="Decision"; what=(dec?dec.title+" ("+dec.room+")":"Decision")+(a.status?" → "+STATUS_LABEL[a.status]:"");
+    detail=[a.selection?"Picked: "+a.selection:null,a.cost?money(a.cost):null,a.note].filter(Boolean).join(" · ");
+    if(dec&&dec.selection&&a.selection&&dec.selection!==a.selection) detail+=" · Replaces earlier pick: "+dec.selection; }
+  else if(a.type==="add_decision"){ kind="New decision"; what=a.title+" ("+a.room+")"; detail="Due before "+(MS[a.milestone]?.label||"")+(a.leadWeeks?", "+a.leadWeeks+" wk lead":"")+(a.why?" · "+a.why:""); }
+  else if(a.type==="move_milestone"){ kind="Schedule change"; const old=S.project?.milestones?.[a.milestone];
+    what=(MS[a.milestone]?.label||a.milestone)+": "+fmtD(old)+" → "+fmtD(a.date);
+    const n=S.decisions.filter(d=>d.milestone===a.milestone&&OPEN.has(d.status)).length; detail=(a.reason||"")+(n?" · Moves "+n+" open decision deadline"+(n>1?"s":""):""); }
+  else if(a.type==="add_photo"){ kind="Photo"; what=(a.room||"")+(a.caption?" · "+a.caption:""); detail=dec?"Linked to "+dec.title:""; }
+  else if(a.type==="add_note"){ kind="Note"; what=a.text; detail=a.room||""; }
+  else return "";
+  const st=a.state||"pending";
+  return '<div class="card '+st+'"><span class="kind">'+esc(kind)+'</span><span class="what">'+esc(what)+'</span>'+(detail?'<span class="detail">'+esc(detail)+'</span>':'')+
+   (flags.length?'<div class="flags">'+flags.map(f=>'<span class="flag">'+esc(f)+'</span>').join("")+'</div>':'')+
+   '<div class="acts">'+(st==="pending"?'<button class="btn" type="button" data-ok="'+mi+':'+ai+'">Log it</button><button class="btn sec" type="button" data-no="'+mi+':'+ai+'">Not now</button>':'<span class="state">'+(st==="confirmed"?"Logged":"Skipped")+'</span>')+'</div></div>';
+}
+function renderMsgs(){
+  const box=$("#msgs");
+  const atBottom = box.scrollHeight-box.scrollTop-box.clientHeight<60;
+  if(!S.messages.length){
+    box.innerHTML='<div class="msg ai"><div class="bubble">Hi! I keep your renovation organized. Tell me what happened on site, forward what your contractor said, or snap a photo of an invoice, a receipt or a tile sample. I\'ll suggest how to log it, and nothing is saved until you tap Log it.</div></div>';
+  } else box.innerHTML = S.messages.map(m=>'<div class="msg '+(m.role==="user"?"user":"ai")+'">'+
+    ((m.images||[]).length?'<div class="imgs">'+m.images.map(id=>'<img src="'+blobUrl(id)+'" alt="Attached photo">').join("")+'</div>':'')+
+    (m.text?'<div class="bubble">'+esc(m.text)+'</div>':'')+
+    (m.actions||[]).map((a,i)=>actionView(a,m.id,i)).join("")+'</div>').join("");
+  if(S.busy) box.insertAdjacentHTML("beforeend",'<div class="msg ai"><div class="bubble dots">Reading that</div></div>');
+  if(atBottom||S.busy) box.scrollTop=box.scrollHeight;
+  renderChips(); renderUpNext();
+}
+function renderChips(){
+  const c=[];
+  if(S.project){ c.push("What should I be deciding now?"); const over=S.buckets.some(b=>bucketStats(b).left<0); if(over) c.push("Where am I over budget?"); c.push("What happens at rough-in?"); }
+  $("#chips").innerHTML = S.messages.length>6?"":c.map(t=>'<button type="button" class="chip">'+esc(t)+'</button>').join("");
+}
+$("#chips").addEventListener("click",e=>{const b=e.target.closest(".chip");if(b){$("#box").value=b.textContent;$("#composer").requestSubmit();}});
+$("#msgs").addEventListener("click",async e=>{
+  const ok=e.target.closest("[data-ok]"), no=e.target.closest("[data-no]"); const t=ok||no; if(!t) return;
+  const [mid,ai]=(t.dataset.ok||t.dataset.no).split(":"); const m=S.messages.find(x=>x.id===mid); if(!m) return;
+  t.disabled=true;
+  try{
+    if(ok) await applyAction(m.actions[+ai], m);
+    const acts=m.actions.map((a,i)=>i===+ai?{...a,state:ok?"confirmed":"dismissed"}:a);
+    await db.doc("messages/"+mid).update({actions:acts});
+  }catch(err){ t.disabled=false; setStatus("Couldn't log that: "+(err.message||err.code||"try again")); }
+});
+async function addLog(e){ await db.collection("log").add({at:new Date().toISOString(),...e}); }
+async function applyAction(a, m){
+  const now=new Date().toISOString();
+  if(a.type==="log_invoice"){
+    const assetId = (m.images||[])[a.imageIndex??0]||null;
+    await db.collection("ledger").add({date:a.date||todayISO(),vendor:a.vendor||"",amount:Number(a.amount)||0,bucketId:a.bucketId||null,description:a.description||"",flags:a.flags||[],assetId,createdAt:now});
+    await addLog({type:"invoice",summary:"Invoice logged: "+(a.vendor||"")+" "+money(a.amount)+(a.description?" for "+a.description:"")});
+  } else if(a.type==="update_decision"){
+    const d=S.decisions.find(x=>x.id===a.decisionId); if(!d) throw {message:"that decision no longer exists"};
+    const patch={updatedAt:now}; if(a.status) patch.status=a.status; if(a.selection) patch.selection=a.selection; if(a.cost!=null&&a.cost!=="") patch.cost=Number(a.cost);
+    if(a.note) patch.notes=[...(d.notes||[]),{at:now,text:a.note}];
+    await db.doc("decisions/"+d.id).update(patch);
+    await addLog({type:"decision",summary:d.title+" ("+d.room+")"+(a.status?" marked "+STATUS_LABEL[a.status]:" updated"),before:[d.selection,STATUS_LABEL[d.status]].filter(Boolean).join(", "),after:[patch.selection||d.selection,STATUS_LABEL[patch.status||d.status]].filter(Boolean).join(", "),reason:a.note||"",ref:d.id});
+  } else if(a.type==="add_decision"){
+    const ref=await db.collection("decisions").add({title:a.title,room:a.room||"Whole house",category:a.category||"",milestone:MS[a.milestone]?a.milestone:"finish",leadWeeks:Number(a.leadWeeks)||0,why:a.why||"",bucketId:a.bucketId||null,status:"not_started",createdAt:now});
+    await addLog({type:"decision",summary:"New decision added: "+a.title+" ("+(a.room||"")+")",ref:ref.id});
+  } else if(a.type==="move_milestone"){
+    const old=S.project.milestones?.[a.milestone];
+    await db.doc("project/main").update({milestones:{...S.project.milestones,[a.milestone]:a.date}});
+    const n=S.decisions.filter(d=>d.milestone===a.milestone&&OPEN.has(d.status)).length;
+    await addLog({type:"schedule",summary:(MS[a.milestone]?.label||a.milestone)+" moved"+(n?"; "+n+" decision deadline"+(n>1?"s":"")+" shifted":""),before:fmtD(old),after:fmtD(a.date),reason:a.reason||""});
+  } else if(a.type==="add_photo"){
+    const assetId=(m.images||[])[a.imageIndex??0]; if(!assetId) throw {message:"the photo wasn't stored"};
+    await db.collection("photos").add({assetId,room:a.room||"Other",caption:a.caption||"",decisionId:a.decisionId||null,date:todayISO(),at:now});
+    await addLog({type:"photo",summary:"Photo filed: "+(a.room||"")+(a.caption?" · "+a.caption:"")});
+  } else if(a.type==="add_note"){
+    await addLog({type:"note",summary:"Note"+(a.room?" ("+a.room+")":"")+": "+a.text});
+  }
+}
+
+// files
+$("#fileIn").addEventListener("change",e=>{ const max=S.imgMax||4; S.pendingFiles=[...S.pendingFiles,...e.target.files].slice(0,max); e.target.value=""; renderThumbs(); });
+function renderThumbs(){ $("#thumbs").innerHTML=S.pendingFiles.map((f,i)=>'<div><img src="'+URL.createObjectURL(f)+'" alt="Photo to send"><button type="button" aria-label="Remove photo" data-rm="'+i+'">×</button></div>').join(""); }
+$("#thumbs").addEventListener("click",e=>{const b=e.target.closest("[data-rm]");if(b){S.pendingFiles.splice(+b.dataset.rm,1);renderThumbs();}});
+$("#box").addEventListener("keydown",e=>{ if(e.key==="Enter"&&!e.shiftKey&&!matchMedia("(pointer:coarse)").matches){ e.preventDefault(); $("#composer").requestSubmit(); }});
+$("#box").addEventListener("input",e=>{e.target.style.height="auto";e.target.style.height=Math.min(140,e.target.scrollHeight)+"px";});
+
+function stateForPrompt(){
+  return JSON.stringify({
+    today:todayISO(), project:{name:S.project?.name,scope:S.project?.scope,milestones:S.project?.milestones},
+    milestoneIds:MILESTONES.map(m=>m.id+" = "+m.label),
+    decisions:S.decisions.map(d=>({id:d.id,title:d.title,room:d.room,status:d.status,decideBy:decideBy(d),milestone:d.milestone,selection:d.selection||undefined,cost:d.cost||undefined,bucketId:d.bucketId||undefined})),
+    buckets:S.buckets.map(b=>{const st=bucketStats(b);return {id:b.id,name:b.name,kind:b.kind,budget:b.budget,paid:st.paid,chosen:st.chosen,left:st.left}}),
+    documents:docsForPrompt(),
+    recentInvoices:S.ledger.slice(0,15).map(l=>({date:l.date,vendor:l.vendor,amount:l.amount,bucketId:l.bucketId,description:l.description}))
+  });
+}
+const RULES = `You are the assistant inside Reno Logbook, an app that helps a homeowner with little renovation experience run their own renovation. The homeowner chats with you to give updates, ask questions, and drop off photos of invoices, receipts, samples and site progress. You turn that into proposed log entries the homeowner confirms with one tap.
+
+Reply with ONLY one JSON object: {"reply": string, "actions": array}
+
+"reply": plain, friendly, practical. 1-4 short sentences, or a few short lines. No markdown headings, no bold. Explain any trade term in a few words. Never say something is saved or logged; the homeowner confirms each card. When you propose cards, say briefly what they are and point out anything that needs attention.
+
+"actions": proposed changes, at most 5. Use [] for questions, chit-chat, or when the message has nothing to log. Shapes:
+{"type":"log_invoice","vendor":str,"date":"YYYY-MM-DD","amount":number,"bucketId":str,"description":str,"imageIndex":int|null,"flags":[str]}
+{"type":"update_decision","decisionId":str,"status":"not_started|exploring|decided|ordered|delivered|installed","selection":str|null,"cost":number|null,"note":str|null}
+{"type":"add_decision","title":str,"room":str,"category":str,"milestone":milestoneId,"leadWeeks":int,"why":str,"bucketId":str|null}
+{"type":"move_milestone","milestone":milestoneId,"date":"YYYY-MM-DD","reason":str}
+{"type":"add_photo","imageIndex":int,"room":str,"caption":str,"decisionId":str|null}
+{"type":"add_note","room":str|null,"text":str}
+
+Rules:
+- Use ids exactly as they appear in PROJECT STATE. Match a mention to an existing decision before adding a new one.
+- Invoices: read vendor, date, total and what it is for. Pick the right bucket. Add short flags for: a likely duplicate (same vendor and amount already in recentInvoices), a charge that looks like extra work not in the contract (ask whether a change order was agreed), a payment that would push a bucket's "left" below zero, or a deposit that looks large for the work done. If you can't read the amount, ask instead of guessing.
+- Photos: a sample or product photo is usually a decision (update_decision with a selection). A site photo is add_photo. You can describe what you see and suggest questions for the contractor, but never judge whether work is done correctly or to code.
+- A changed selection on a decision that already has one is fine; mention the earlier pick in the reply. History keeps both.
+- Schedule news: use move_milestone and say which open decisions now come due sooner.
+- "What should I do next" style questions: answer from decisions with the nearest decideBy that are not_started or exploring, and decided items not yet ordered. Name at most 3.
+- Keep the homeowner ahead of their contractor: if an update means a decision is now urgent, say so in the reply.
+- Documents: when a question is about the plans, contract, specs or what's included, answer from "documents" and DOCUMENT EXCERPTS and name the document and page ("Contract, p.4"). If they don't cover it, say so plainly and suggest asking the contractor or architect. Never guess at contract terms. If a document shows something that should be a decision and isn't one yet, propose add_decision.
+
+PROJECT STATE:
+`;
+$("#composer").addEventListener("submit",async e=>{
+  e.preventDefault(); if(S.busy) return;
+  const text=$("#box").value.trim(); const files=S.pendingFiles;
+  if(!text&&!files.length) return;
+  if(!S.project){ openSetup(); return; }
+  if(!sample){ setStatus("Chat needs Claude access in this view."); return; }
+  S.busy=true; $("#send").disabled=true; $("#box").value=""; $("#box").style.height=""; S.pendingFiles=[]; renderThumbs();
+  setStatus(files.length?"Saving photos":"", !!files.length);
+  const imageIds=[];
+  try{
+    if(files.length && assets){ for(const f of files){ const r=await assets.upload(f); imageIds.push(r.id); } }
+    const sentAt=new Date().toISOString();
+    const prior=S.messages.filter(m=>m.at<sentAt).slice(-12);
+    await db.collection("messages").add({role:"user",text,images:imageIds,at:sentAt});
+    setStatus(""); renderMsgs();
+    const hist=prior.filter(m=>m.text||(m.actions||[]).length).map(m=>({role:m.role==="user"?"user":"assistant",content:m.role==="user"?(m.text||"(sent photos)")+((m.images||[]).length?" ["+m.images.length+" photo(s) attached]":""):(m.text||"")+((m.actions||[]).length?"\n[proposed: "+m.actions.map(a=>a.type+" "+(a.state||"pending")).join(", ")+"]":"")}));
+    while(hist.length && hist[0].role!=="user") hist.shift();
+    hist.push({role:"user",content:(text||"(sent photos)")+(files.length?" ["+files.length+" photo(s) attached]":"")});
+    const ex=docExcerpts(text);
+    const exTxt=ex.length?"\n\nDOCUMENT EXCERPTS that may answer the newest message:\n"+ex.map(x=>"--- "+x.title+", page "+x.page+" ---\n"+x.piece).join("\n"):"";
+    const input=[{role:"user",content:RULES+stateForPrompt()+exTxt+"\n\nThe conversation follows. Photos attached to the newest message are passed as images, numbered from 0."},{role:"assistant",content:"Understood."},...hist];
+    const out = await sample.json(input,{cache:false, images: files.length?files:undefined});
+    const reply=typeof out?.reply==="string"?out.reply:"I couldn't read that one. Could you tell me what it is?";
+    const actions=(Array.isArray(out?.actions)?out.actions:[]).slice(0,5).filter(a=>a&&typeof a.type==="string").map(a=>({...a,state:"pending"}));
+    await db.collection("messages").add({role:"ai",text:reply,actions,at:new Date().toISOString()});
+  }catch(err){
+    const code=err?.code; const msg = code==="not_granted"?"Claude access was declined for this page, so the chat can't answer. You can still edit the record directly."
+      : code==="rate_limited"?"Too many requests at once. Wait a minute and send again."
+      : code==="invalid_json"?"I got a garbled answer. Try sending that again."
+      : "That didn't go through: "+(err?.message||code||"unknown error")+". Your message is kept above; send it again when ready.";
+    setStatus(msg);
+  }finally{ S.busy=false; $("#send").disabled=false; renderMsgs(); }
+});
+
+// ---------- documents ----------
+const libLoads={};
+function loadScript(src){ return libLoads[src] ||= new Promise((res,rej)=>{ const s=document.createElement("script"); s.src=src; s.onload=res; s.onerror=()=>{delete libLoads[src];rej({message:"couldn't load the document reader"})}; document.head.appendChild(s); }); }
+async function loadPdf(){
+  await loadScript("https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js");
+  await loadScript("https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js"); // runs in-page, no separate worker
+  return window.pdfjsLib;
+}
+async function loadMammoth(){ await loadScript("https://cdn.jsdelivr.net/npm/mammoth@1.6.0/mammoth.browser.min.js"); return window.mammoth; }
+async function maxImages(){ try{ const l=await sample.limits(); return l?.images? Math.min(8,l.images.maxCount):0; }catch(e){ return 0; } }
+function canvasBlob(c){ return new Promise(r=>c.toBlob(r,"image/jpeg",0.82)); }
+
+// Read a file into page text (+ page images for drawings and scans), then have Claude digest it.
+async function readDocument(file,onStatus){
+  if(!sample) throw {message:"reading documents needs Claude access in this view"};
+  const name=file.name, ext=(name.split(".").pop()||"").toLowerCase(), type=file.type||"";
+  let pages=[], images=[], imagePages=[];
+  const imgCap=await maxImages();
+  if(type==="application/pdf"||ext==="pdf"){
+    onStatus("Opening PDF");
+    const pdfjs=await loadPdf();
+    const pdf=await pdfjs.getDocument({data:await file.arrayBuffer(),isEvalSupported:false}).promise;
+    for(let i=1;i<=pdf.numPages;i++){
+      const pg=await pdf.getPage(i); const tc=await pg.getTextContent();
+      pages.push(tc.items.map(it=>it.str).join(" ").replace(/\s+/g," ").trim());
+      if(i%5===0||i===pdf.numPages) onStatus("Reading page "+i+" of "+pdf.numPages);
+    }
+    // Drawings and scans carry little extractable text: send those pages as pictures.
+    const sparse=pages.map((t,i)=>({i,len:t.length})).filter(p=>p.len<600).slice(0,imgCap);
+    for(const p of sparse){
+      onStatus("Looking at drawing page "+(p.i+1));
+      const pg=await pdf.getPage(p.i+1); const vp0=pg.getViewport({scale:1});
+      const scale=Math.min(4,1800/Math.max(vp0.width,vp0.height)); const vp=pg.getViewport({scale});
+      const c=document.createElement("canvas"); c.width=Math.round(vp.width); c.height=Math.round(vp.height);
+      const ctx=c.getContext("2d"); ctx.fillStyle="#fff"; ctx.fillRect(0,0,c.width,c.height);
+      await pg.render({canvasContext:ctx,viewport:vp}).promise;
+      const b=await canvasBlob(c); if(b){ images.push(b); imagePages.push(p.i+1); }
+    }
+  } else if(type.startsWith("image/")){
+    if(!imgCap) throw {message:"photos can't be read in this view"};
+    pages=[""]; images=[file]; imagePages=[1];
+  } else if(ext==="docx"){
+    onStatus("Opening Word file"); const m=await loadMammoth();
+    const r=await m.extractRawText({arrayBuffer:await file.arrayBuffer()}); pages=[r.value];
+  } else if(type.startsWith("text/")||["txt","md","csv"].includes(ext)){
+    pages=[await file.text()];
+  } else throw {message:"this file type can't be read. Use PDF, Word (.docx), text, or a photo"};
+
+  let joined=pages.map((t,i)=>"[Page "+(i+1)+"]\n"+t).join("\n\n");
+  const LIMIT=60000; const forPrompt=joined.length>LIMIT?joined.slice(0,LIMIT)+"\n[...document continues]":joined;
+  onStatus("Summarizing what it says");
+  const prompt=`A homeowner with little renovation experience uploaded this document for their renovation project. Read it and pull out what matters to them.
+
+FILENAME: ${name}
+EXTRACTED TEXT BY PAGE:
+${forPrompt || "(no extractable text)"}
+${images.length? "IMAGES: "+imagePages.map((p,i)=>"image "+i+" is page "+p).join(", ")+". These are drawings or scans; read labels, room names, dimensions, fixture tags, schedules and notes from them.":""}
+
+Reply with ONLY JSON:
+{"kind":"plans|contract|specs|estimate|permit|schedule|inspection|other",
+ "title":"short name, e.g. 'Architectural plans (permit set)'",
+ "summary":"2-3 plain sentences: what this is and why it matters to the homeowner",
+ "facts":[{"topic":"Scope|Rooms|Fixtures & finishes|Allowances|Price & payments|Schedule|Exclusions|Owner responsibilities|Change orders|Warranty|Other","detail":"one specific point","page":number|null}],
+ "pageNotes":[{"page":number,"text":"what a drawing or scanned page shows, in words: rooms, dimensions, fixture and finish callouts, notes"}],
+ "contractPrice":number|null,
+ "allowances":[{"name":"e.g. Tile","amount":number}],
+ "startDate":"YYYY-MM-DD"|null,
+ "completionDate":"YYYY-MM-DD"|null}
+
+Rules: 5-40 facts, specific (model numbers, sizes, quantities, dollar amounts) with the page they came from. Call out exclusions, items the owner must buy or choose, and anything that sounds like a future cost. pageNotes only for the image pages. Don't invent anything that isn't in the document.`;
+  const out=await sample.json(prompt,{cache:false,images:images.length?images:undefined});
+  if(!out||typeof out!=="object") throw {message:"the summary came back empty"};
+  // Fold drawing notes into the searchable text.
+  const notes=Array.isArray(out.pageNotes)?out.pageNotes:[];
+  if(notes.length){ joined=pages.map((t,i)=>{ const n=notes.filter(x=>Number(x.page)===i+1).map(x=>x.text).join(" "); return "[Page "+(i+1)+"]\n"+t+(n?"\n(Read from the drawing) "+n:""); }).join("\n\n"); }
+  return {file,name,kind:out.kind||"other",title:out.title||name,summary:out.summary||"",facts:Array.isArray(out.facts)?out.facts.slice(0,60):[],pages:pages.length,text:joined,
+    contractPrice:Number(out.contractPrice)||null,allowances:Array.isArray(out.allowances)?out.allowances:[],startDate:out.startDate||null,completionDate:out.completionDate||null};
+}
+async function saveDocument(d){
+  let assetId=null;
+  if(assets && d.file.size<=20*1024*1024){ try{ assetId=(await assets.upload(d.file)).id; }catch(e){ assetId=null; } }
+  const ref=db.collection("docs").doc(); const id=ref.id;
+  const CH=60000, MAXCH=6; const chunks=[]; for(let i=0;i<d.text.length && chunks.length<MAXCH;i+=CH) chunks.push(d.text.slice(i,i+CH));
+  await ref.set({name:d.name,title:d.title,kind:d.kind,summary:d.summary,facts:d.facts,pages:d.pages,assetId,truncated:d.text.length>CH*MAXCH,at:new Date().toISOString()});
+  for(let n=0;n<chunks.length;n++) await db.doc("doctext/"+id+"-"+n).set({docId:id,n,text:chunks[n]});
+  await addLog({type:"document",summary:"Document added: "+d.title+(d.pages?" ("+d.pages+" pages)":"")});
+}
+// Simple keyword retrieval over document pages for the chat.
+const STOP=new Set("the and for with that this what when where which have has are was were will can our your you about from into does did how why who its it's they them then than there their just also any all not but should would could need much many more most some".split(" "));
+function docExcerpts(q,k=6){
+  if(!S.doctext.length) return [];
+  const words=[...new Set(q.toLowerCase().match(/[a-z0-9]{3,}/g)||[])].filter(w=>!STOP.has(w));
+  if(!words.length) return [];
+  const byDoc={}; for(const t of [...S.doctext].sort((a,b)=>a.n-b.n)) byDoc[t.docId]=(byDoc[t.docId]||"")+t.text;
+  const cands=[];
+  for(const [docId,text] of Object.entries(byDoc)){
+    const title=S.docs.find(d=>d.id===docId)?.title||"Document";
+    const parts=text.split(/\[Page (\d+)\]\n?/);
+    for(let i=1;i<parts.length;i+=2){ const page=parts[i], body=parts[i+1]||"";
+      for(let j=0;j<body.length;j+=1600){ const piece=body.slice(j,j+1800); const low=piece.toLowerCase();
+        let score=0; for(const w of words){ const m=low.split(w).length-1; if(m) score+=1+Math.min(m,4)*0.25; }
+        if(score) cands.push({title,page,piece,score}); } }
+  }
+  return cands.sort((a,b)=>b.score-a.score).slice(0,k);
+}
+function docsForPrompt(){
+  return S.docs.map(d=>({title:d.title,kind:d.kind,summary:d.summary,facts:(d.facts||[]).map(f=>f.topic+": "+f.detail+(f.page?" (p."+f.page+")":""))}));
+}
+
+// ---------- setup ----------
+function maybeSetup(){ if(S.loaded.project && !S.project && !$("#overlay").dataset.dismissed) openSetup(); }
+function openSetup(){
+  const ov=$("#overlay"); ov.hidden=false;
+  ov.innerHTML='<form class="sheet" id="setupForm"><h2 class="sect">Set up a project</h2>'+
+   (S.project?'<div class="banner">This replaces the current project, including its decisions, budget, invoices and history. Export a backup first if you want to keep it.</div>':'')+
+   '<p class="lede">Add your documents, then a few answers. The app builds your decision map from a library of the choices renovations need, with deadlines worked back from your schedule. You can fix anything later in the chat.</p>'+
+   '<div class="drop" id="setupDrop"><span style="font-weight:600">Your documents</span><span class="hint">Add your contract, architect\'s plans, specs or estimates. Claude reads them to fill in the fields below and to build decisions that match your actual plans. They stay available to the chat for questions later. PDF, Word, text or photos of pages.</span><label class="btn sec pick" for="setupIn">Add documents</label><input type="file" id="setupIn" multiple hidden accept=".pdf,.docx,.txt,.md,.csv,image/*"><ul class="flist" id="setupList"></ul></div>'+
+   '<label for="sName">Project name<input id="sName" required placeholder="e.g. Rivera kitchen and baths"></label>'+
+   '<label for="sScope">What are you renovating?<textarea id="sScope" rows="4" required placeholder="e.g. Full kitchen gut, two bathrooms, a 400 sq ft rear addition with a mudroom, new windows on the back of the house."></textarea></label>'+
+   '<div class="two"><label for="sStart">Construction start (or start date so far)<input id="sStart" type="date" required></label><label for="sEnd">Target move-in<input id="sEnd" type="date"></label></div>'+
+   '<div class="two"><label for="sContract">Contract price<input id="sContract" inputmode="numeric" placeholder="e.g. 285000"></label><label for="sCush">Cushion you set aside<input id="sCush" inputmode="numeric" placeholder="e.g. 25000"></label></div>'+
+   '<label for="sAllow">Allowances in your contract (if any)<textarea id="sAllow" rows="2" placeholder="e.g. tile $9,000, plumbing fixtures $6,500, lighting $3,000"></textarea></label>'+
+   '<div class="note" id="setupStatus"></div><div class="acts"><button class="btn sec" type="button" id="setupCancel">Cancel</button><button class="btn" type="submit" id="setupGo">Build my decision map</button></div></form>';
+  $("#sStart").value=todayISO();
+  S.setupDocs=[]; renderSetupList();
+  $("#setupCancel").onclick=()=>{ov.hidden=true;ov.dataset.dismissed="1";S.setupDocs=[];};
+  $("#setupForm").onsubmit=runSetup;
+  $("#setupIn").onchange=e=>{ addSetupFiles([...e.target.files]); e.target.value=""; };
+  const dz=$("#setupDrop");
+  dz.ondragover=e=>{e.preventDefault();dz.classList.add("over");};
+  dz.ondragleave=()=>dz.classList.remove("over");
+  dz.ondrop=e=>{e.preventDefault();dz.classList.remove("over");addSetupFiles([...e.dataTransfer.files]);};
+  $("#setupList").onclick=e=>{const b=e.target.closest("[data-rmdoc]");if(b){S.setupDocs.splice(+b.dataset.rmdoc,1);renderSetupList();}};
+}
+function renderSetupList(){ const el=document.getElementById("setupList"); if(el) el.innerHTML=S.setupDocs.map((q,i)=>fileRow({...q,removable:!q.busy},i)).join(""); const go=document.getElementById("setupGo"); if(go) go.disabled=S.setupDocs.some(q=>q.busy); }
+async function addSetupFiles(files){
+  for(const f of files){
+    const q={name:f.name,status:"Waiting",busy:true}; S.setupDocs.push(q); renderSetupList();
+    try{ q.doc=await readDocument(f,t=>{q.status=t;renderSetupList();});
+      q.done=true; q.status=(q.doc.title||"Read")+" · "+q.doc.facts.length+" key points found"; prefillFrom(q.doc); }
+    catch(err){ q.error="Couldn't read it: "+(err?.message||err?.code||"unknown error"); }
+    q.busy=false; renderSetupList();
+  }
+}
+function prefillFrom(d){
+  const set=(id,v)=>{const el=document.getElementById(id); if(el && !el.value && v!=null && v!=="") el.value=v;};
+  set("sContract",d.contractPrice?String(Math.round(d.contractPrice)):"");
+  if(d.allowances.length) set("sAllow",d.allowances.map(a=>a.name+" $"+Math.round(Number(a.amount)||0).toLocaleString("en-US")).join(", "));
+  set("sEnd",d.completionDate);
+  if(d.startDate && $("#sStart").value===todayISO()) $("#sStart").value=d.startDate;
+}
+async function runSetup(e){
+  e.preventDefault();
+  if(!sample){ $("#setupStatus").textContent="Building the map needs Claude access in this view."; return; }
+  const go=$("#setupGo"); go.disabled=true; const st=$("#setupStatus"); st.textContent="Building your decision map. This can take a minute"; st.classList.add("dots");
+  const docsReady=S.setupDocs.filter(q=>q.doc).map(q=>q.doc);
+  const ans={name:$("#sName").value.trim(),scope:$("#sScope").value.trim(),start:$("#sStart").value,moveIn:$("#sEnd").value||null,contract:$("#sContract").value,cushion:$("#sCush").value,allowances:$("#sAllow").value};
+  const prompt=`You are setting up a renovation tracking app for a homeowner with little experience. From their answers, produce their project's schedule milestones, budget buckets and a decision map.
+
+HOMEOWNER ANSWERS: ${JSON.stringify(ans)}
+TODAY: ${todayISO()}
+MILESTONES (ids): ${MILESTONES.map(m=>m.id+" = "+m.label+": "+m.ex).join(" | ")}
+DECISION LIBRARY [category, title, area, milestone, leadWeeks, why]: ${JSON.stringify(LIBRARY)}
+PROJECT DOCUMENTS (what the homeowner uploaded, already read): ${JSON.stringify(docsReady.map(d=>({title:d.title,kind:d.kind,summary:d.summary,facts:d.facts})))}
+
+Reply with ONLY JSON:
+{"scope": short one-line summary,
+ "milestones": {"roughIn":"YYYY-MM-DD","drywall":...,"cabinets":...,"countertops":...,"finish":...,"moveIn":...},
+ "buckets": [{"id":"slug","name":str,"kind":"contract|allowance|owner|contingency","budget":number}],
+ "decisions": [{"title":str,"room":str,"category":str,"milestone":id,"leadWeeks":int,"why":str,"bucketId":str|null,"status":"not_started|decided","selection":str|null,"source":str|null}]}
+
+Rules: Estimate milestone dates from the start date and the size of the job (typical: rough-in 3-6 weeks after start, walls close 3-4 weeks later, then cabinets, countertops ~3 weeks after cabinets, finish, move-in), ending at the target move-in if given. Use the contract price as one "contract" bucket, each named allowance as an "allowance" bucket, the cushion as "contingency" (default 10% of contract if not given), and add owner buckets only if they mention buying things themselves. Pick library decisions that apply to this scope, repeating per room where it matters (e.g. each bathroom gets its own shower valve, vanity, tile), using the homeowner's own room names. Add decisions the library misses that this scope clearly needs. Link decisions to an allowance bucketId when an allowance covers them. Keep "why" to one plain sentence. 25-70 decisions.
+Documents come first when they exist: use the rooms, fixtures and finishes they name; take dates, contract price and allowances from them when the form is blank; if the plans or specs already fix a selection (a model number, a material), set status "decided", fill "selection", and set "source" to the document title and page (e.g. "Plans p.A-201"). Add a decision for anything a document says the owner must choose or supply, or that is excluded from the contract but still needed.`;
+  try{
+    const out=await sample.json(prompt,{modelTier:"default",cache:false});
+    if(!out||!out.milestones||!Array.isArray(out.decisions)) throw {code:"invalid_json",message:"missing fields"};
+    st.textContent="Saving";
+    for(const c of ["decisions","buckets","ledger","log","photos","messages","docs","doctext"]){ const snap=await db.collection(c).get(); for(const d of snap.docs) await db.collection(c).doc(d.id).delete(); }
+    const now=new Date().toISOString();
+    await db.doc("project/main").set({name:ans.name,scope:out.scope||ans.scope,milestones:out.milestones,createdAt:now});
+    for(const d of docsReady){ st.textContent="Saving "+d.name; await saveDocument(d); }
+    for(const b of out.buckets||[]) await db.doc("buckets/"+String(b.id||b.name).toLowerCase().replace(/[^a-z0-9]+/g,"-").slice(0,40)).set({name:b.name,kind:BUCKET_KIND[b.kind]?b.kind:"owner",budget:Number(b.budget)||0});
+    let i=0; for(const d of out.decisions){ i++; await db.collection("decisions").add({title:d.title,room:d.room||"Whole house",category:d.category||"",milestone:MS[d.milestone]?d.milestone:"finish",leadWeeks:Number(d.leadWeeks)||0,why:d.why||"",bucketId:d.bucketId?String(d.bucketId).toLowerCase().replace(/[^a-z0-9]+/g,"-").slice(0,40):null,status:d.status==="decided"?"decided":"not_started",selection:d.selection||null,source:d.source||null,createdAt:now}); if(i%10===0) st.textContent="Saving decisions "+i+" of "+out.decisions.length; }
+    await addLog({type:"setup",summary:"Project set up with "+out.decisions.length+" decisions and "+(out.buckets||[]).length+" budget buckets"+(docsReady.length?", built from "+docsReady.length+" document"+(docsReady.length>1?"s":""):"")});
+    await db.collection("messages").add({role:"ai",text:"Your decision map is ready: "+out.decisions.length+" decisions, each with a deadline worked back from your schedule."+(docsReady.length?" I used your documents to match it to your plans, and you can ask me anything about them.":"")+" The estimated dates are a starting point. When your contractor gives you real dates, tell me and I'll move everything that depends on them.",actions:[],at:new Date().toISOString()});
+    $("#overlay").hidden=true; S.view="decisions"; render();
+  }catch(err){ st.classList.remove("dots"); st.textContent= err?.code==="not_granted"?"Claude access was declined, so the map can't be built.":"Couldn't build the map ("+(err?.message||err?.code||"error")+"). Try again."; go.disabled=false; }
+}
+$("#btnNew").onclick=()=>{ $("#hacts").classList.remove("open"); delete $("#overlay").dataset.dismissed; openSetup(); };
+
+// ---------- backup ----------
+$("#btnExport").onclick=async()=>{ $("#hacts").classList.remove("open");
+  if(!downloads||!S.project) return;
+  const lines=[];
+  lines.push((S.project.name||"Project")+" — backup "+new Date().toLocaleString("en-US"));
+  lines.push(S.project.scope||""); lines.push("");
+  lines.push("SCHEDULE"); for(const m of MILESTONES) lines.push("  "+m.label+": "+(S.project.milestones?.[m.id]||"—")); lines.push("");
+  lines.push("DECISIONS");
+  for(const d of [...S.decisions].sort((a,b)=>(decideBy(a)||"").localeCompare(decideBy(b)||""))) lines.push("  ["+STATUS_LABEL[d.status]+"] "+d.title+" ("+d.room+") — decide by "+(decideBy(d)||"—")+(d.selection?" — picked: "+d.selection+(d.cost?" "+money(d.cost):""):""));
+  lines.push(""); lines.push("BUDGET");
+  for(const b of S.buckets){ const st=bucketStats(b); lines.push("  "+b.name+" ("+BUCKET_KIND[b.kind]+"): budget "+money(b.budget)+", paid "+money(st.paid)+(b.kind==="allowance"?", chosen "+money(st.chosen):"")+", left "+money(st.left)); }
+  lines.push(""); lines.push("INVOICES"); for(const l of S.ledger) lines.push("  "+l.date+"  "+l.vendor+"  "+money(l.amount)+"  "+(l.description||""));
+  lines.push(""); lines.push("DOCUMENTS"); for(const d of S.docs){ lines.push("  "+d.title+" ("+d.kind+", "+d.pages+" pages)"); if(d.summary) lines.push("    "+d.summary); for(const f of d.facts||[]) lines.push("    - "+f.topic+": "+f.detail+(f.page?" (p."+f.page+")":"")); }
+  lines.push(""); lines.push("HISTORY"); for(const e of S.log) lines.push("  "+e.at.slice(0,16).replace("T"," ")+"  "+e.summary+(e.before?" (was: "+e.before+")":"")+(e.reason?" — "+e.reason:""));
+  lines.push(""); lines.push("--- machine-readable copy ---");
+  lines.push(JSON.stringify({project:S.project,documents:S.docs,decisions:S.decisions,buckets:S.buckets,ledger:S.ledger,photos:S.photos,log:S.log},null,1));
+  try{ await downloads.save({filename:(S.project.name||"project").replace(/[^\w]+/g,"-")+"-backup-"+todayISO()+".txt",data:lines.join("\n")}); }
+  catch(err){ if(err?.code!=="declined"&&err?.code!=="cancelled") setStatus("Couldn't export: "+(err?.message||err?.code)); }
+};
+render(); renderMsgs();
+</script>

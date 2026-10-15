@@ -12,16 +12,12 @@ describe("activeTab", () => {
     expect(activeTab("/budget/ledger")?.label).toBe("Budget");
   });
 
-  it("files secondary screens under More", () => {
-    expect(activeTab("/photos")?.label).toBe("More");
-    expect(activeTab("/history")?.label).toBe("More");
-  });
-
   it("does not match lookalike prefixes", () => {
     expect(activeTab("/budgetary")).toBeUndefined();
   });
 
-  it("keeps the tab bar to five items for one-handed use", () => {
-    expect(TABS).toHaveLength(5);
+  it("has a short label for every tab so seven fit across a phone", () => {
+    expect(TABS).toHaveLength(7);
+    for (const t of TABS) expect(t.short.length).toBeLessThanOrEqual(6);
   });
 });
