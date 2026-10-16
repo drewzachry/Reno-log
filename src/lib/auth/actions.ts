@@ -1,9 +1,11 @@
 "use server";
 
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { siteOrigin } from "@/lib/origin";
 import { createClient } from "@/lib/supabase/server";
+import { HANDOFF_COOKIE, HANDOFF_PARAM, newHandoffNonce } from "./handoff";
 import { safeNext } from "./safe-next";
 
 export type LoginState =
@@ -22,6 +24,15 @@ export async function sendCode(_: LoginState, form: FormData): Promise<LoginStat
     };
   }
   const next = safeNext(String(form.get("next") ?? ""));
+  // Lets this browser pick up the sign-in if the email link opens elsewhere.
+  const nonce = newHandoffNonce();
+  (await cookies()).set(HANDOFF_COOKIE, nonce, {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    maxAge: 60 * 15,
+  });
   let error: { status?: number; code?: string; message: string } | null;
   try {
     const supabase = await createClient();
@@ -29,7 +40,7 @@ export async function sendCode(_: LoginState, form: FormData): Promise<LoginStat
       email: parsed.data,
       options: {
         shouldCreateUser: true,
-        emailRedirectTo: `${await siteOrigin()}/auth/callback?next=${encodeURIComponent(next)}`,
+        emailRedirectTo: `${await siteOrigin()}/auth/callback?next=${encodeURIComponent(next)}&${HANDOFF_PARAM}=${nonce}`,
       },
     }));
   } catch (e) {

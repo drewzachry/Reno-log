@@ -1,7 +1,7 @@
 // A local stand-in for a Supabase project, for end-to-end tests only.
 // /rest/v1 is proxied to PostgREST (the same server Supabase uses); /auth/v1
 // is a minimal fake of Supabase Auth where any 6-digit code signs you in.
-import { createHmac, randomUUID } from "node:crypto";
+import { createHash, createHmac, randomUUID } from "node:crypto";
 import http from "node:http";
 import pg from "pg";
 
@@ -32,6 +32,18 @@ const userJson = (u) => ({
   created_at: new Date().toISOString(),
 });
 const refreshTokens = new Map();
+// Sign-in links: the last link per email (for tests to "open"), and PKCE auth
+// codes waiting to be exchanged with the matching verifier.
+const lastLink = new Map();
+const linkTokens = new Map();
+const authCodes = new Map();
+const findOrCreateUser = async (email) => {
+  let { rows } = await db.query("select * from auth.users where email = $1", [email]);
+  if (!rows.length) {
+    ({ rows } = await db.query("insert into auth.users (email) values ($1) returning *", [email]));
+  }
+  return rows[0];
+};
 const session = (u) => {
   const now = Math.floor(Date.now() / 1000);
   const refresh = randomUUID();
@@ -90,8 +102,63 @@ http
 
     const path = url.pathname.replace("/auth/v1", "");
     if (path === "/settings") return send(res, 200, { external: { email: true, google: false } });
-    if (path === "/otp") return send(res, 200, {});
+    if (path === "/otp") {
+      const b = await readBody(req);
+      const token = randomUUID();
+      linkTokens.set(token, {
+        email: b.email.toLowerCase(),
+        challenge: b.code_challenge,
+        redirectTo: url.searchParams.get("redirect_to"),
+      });
+      lastLink.set(
+        b.email.toLowerCase(),
+        `http://localhost:${PORT}/auth/v1/verify?token=${token}&type=magiclink`,
+      );
+      return send(res, 200, {});
+    }
+    if (path === "/test/last-link") {
+      const link = lastLink.get(url.searchParams.get("email"));
+      return link ? send(res, 200, { link }) : send(res, 404, { msg: "no link sent" });
+    }
+    if (path === "/verify" && req.method === "GET") {
+      // Opening the emailed link: like Supabase, redirect with a one-time code.
+      const t = linkTokens.get(url.searchParams.get("token"));
+      if (!t) return send(res, 403, { msg: "unknown link" });
+      if (t.used) {
+        // Like Supabase: back to the app with the error in the URL fragment.
+        res.writeHead(303, {
+          location: `${t.redirectTo}#error=access_denied&error_code=otp_expired`,
+        });
+        return res.end();
+      }
+      t.used = true;
+      const code = randomUUID();
+      authCodes.set(code, { user: await findOrCreateUser(t.email), challenge: t.challenge });
+      const target = new URL(t.redirectTo);
+      target.searchParams.set("code", code);
+      res.writeHead(303, { location: target.toString() });
+      return res.end();
+    }
+    if (path === "/token" && url.searchParams.get("grant_type") === "pkce") {
+      const b = await readBody(req);
+      const pending = authCodes.get(b.auth_code);
+      if (!pending)
+        return send(res, 404, { error_code: "flow_state_not_found", msg: "invalid flow state" });
+      // Like Supabase, the code is single-use whether or not the verifier matches.
+      authCodes.delete(b.auth_code);
+      const challenge = createHash("sha256")
+        .update(b.code_verifier ?? "")
+        .digest("base64url");
+      if (challenge !== pending.challenge) {
+        return send(res, 403, {
+          error_code: "bad_code_verifier",
+          msg: "code challenge does not match",
+        });
+      }
+      return send(res, 200, session(pending.user));
+    }
     if (path === "/verify") {
+      // Typing the code from the email.
       const b = await readBody(req);
       if (!/^\d{6}$/.test(b.token ?? "")) {
         return send(res, 403, {

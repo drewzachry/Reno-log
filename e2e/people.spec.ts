@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { invite, join, newPhone, startProject } from "./helpers";
+import { invite, join, newPhone, requestLink, startProject } from "./helpers";
 
 // Phase 1 acceptance (docs/BUILD_PLAN.md): Drew creates a project, invites a
 // second email as Editor, that person accepts on a phone and sees the project;
@@ -71,8 +71,8 @@ test("invite, accept, roles and removal", async ({ browser }) => {
 test("a wrong code is refused and signed-out visitors go to sign in", async ({ page }) => {
   await page.goto("/budget");
   await expect(page).toHaveURL(/\/login\?next=%2Fbudget$/);
-  await page.getByLabel("Your email").fill("new@example.com");
-  await page.getByRole("button", { name: "Email me a sign-in code" }).click();
+  await requestLink(page, "new@example.com");
+  await page.getByText("Got a code instead of a link?").click();
   await page.getByLabel("Code from the email").fill("12");
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await expect(page.locator("main").getByRole("alert")).toContainText("all numbers");

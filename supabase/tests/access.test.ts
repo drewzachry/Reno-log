@@ -278,3 +278,32 @@ describe("names", () => {
     expect(seen).toBe(0);
   });
 });
+
+describe("sign-in handoff", () => {
+  const nonceHash = "a".repeat(64);
+
+  it("hands a parked code to the app exactly once", async () => {
+    await as(db, null, (q) => q("select public.park_sign_in($1, 'code-123')", [nonceHash]));
+    const first = await as(db, null, async (q) =>
+      (await q("select public.collect_sign_in($1) as code", [nonceHash])).rows[0].code,
+    );
+    const second = await as(db, null, async (q) =>
+      (await q("select public.collect_sign_in($1) as code", [nonceHash])).rows[0].code,
+    );
+    expect([first, second]).toEqual(["code-123", null]);
+  });
+
+  it("forgets codes after 15 minutes and hides the table from clients", async () => {
+    await as(db, null, (q) => q("select public.park_sign_in($1, 'old')", [nonceHash]));
+    await db.query("update public.auth_handoffs set created_at = now() - interval '16 minutes'");
+    const code = await as(db, null, async (q) =>
+      (await q("select public.collect_sign_in($1) as code", [nonceHash])).rows[0].code,
+    );
+    expect(code).toBeNull();
+    await expect(as(db, null, (q) => q("select * from public.auth_handoffs"))).rejects.toThrow(/permission denied/);
+  });
+
+  it("rejects malformed keys", async () => {
+    await expect(as(db, null, (q) => q("select public.park_sign_in('short', 'x')"))).rejects.toThrow();
+  });
+});

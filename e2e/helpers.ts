@@ -12,10 +12,24 @@ export async function newPhone(browser: Browser): Promise<Page> {
 
 /** Signs in on the login page with the email code (the test stack accepts any 6 digits). */
 export async function signIn(page: Page, email: string) {
-  await page.getByLabel("Your email").fill(email);
-  await page.getByRole("button", { name: "Email me a sign-in code" }).click();
+  await requestLink(page, email);
+  await page.getByText("Got a code instead of a link?").click();
   await page.getByLabel("Code from the email").fill("123456");
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
+}
+
+export async function requestLink(page: Page, email: string) {
+  await page.getByLabel("Your email").fill(email);
+  await page.getByRole("button", { name: "Email me a sign-in link" }).click();
+  await expect(page.getByRole("heading", { name: "Check your email" })).toBeVisible();
+}
+
+/** The sign-in link the test stack "emailed" most recently to this address. */
+export async function lastEmailedLink(email: string): Promise<string> {
+  const res = await fetch(
+    `http://localhost:54321/auth/v1/test/last-link?email=${encodeURIComponent(email)}`,
+  );
+  return ((await res.json()) as { link: string }).link;
 }
 
 /** Signs a new person in and starts a project; leaves them on the Chat tab. */
