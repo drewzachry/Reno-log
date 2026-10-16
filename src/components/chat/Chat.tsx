@@ -1,0 +1,334 @@
+"use client";
+
+import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
+import { createClient } from "@/lib/supabase/client";
+import { ProposalCard, type CardData } from "./ProposalCard";
+
+export type ChatMessage = {
+  id: string;
+  role: "user" | "assistant";
+  text: string;
+  /** Sent by the person looking. */
+  mine: boolean;
+  /** Someone else's name, for messages from collaborators. */
+  author: string | null;
+  images: string[];
+  cards: (CardData & { created_at: string })[];
+};
+
+const WELCOME =
+  "Hi! I keep your renovation organized. Tell me what happened on site, forward what your contractor said, or snap a photo of an invoice, a receipt or a tile sample. I’ll suggest how to log it, and nothing is saved until you tap Log it.";
+const WELCOME_VIEWER =
+  "Hi! Ask me anything about this renovation: what’s due, what’s been decided, where the money stands.";
+const MAX_PHOTOS = 8;
+/** Opening the app shows Up next and the latest few messages; older ones are a tap away. */
+const RECENT = 10;
+
+type Draft = { file: File; url: string };
+
+export function Chat({
+  projectId,
+  canEdit,
+  messages,
+  suggestions,
+}: {
+  projectId: string;
+  canEdit: boolean;
+  messages: ChatMessage[];
+  suggestions: string[];
+}) {
+  const router = useRouter();
+  const [text, setText] = useState("");
+  const [drafts, setDrafts] = useState<Draft[]>([]);
+  const [sending, setSending] = useState<{ text: string; images: string[] } | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const end = useRef<HTMLDivElement>(null);
+  const box = useRef<HTMLTextAreaElement>(null);
+  const seen = useRef(messages.length);
+  const [all, setAll] = useState(false);
+  const opened = useRef(false);
+
+  // The server's copy has arrived: drop the stand-in bubble.
+  useEffect(() => {
+    if (messages.length !== seen.current) {
+      seen.current = messages.length;
+      setSending(null);
+    }
+  }, [messages.length]);
+
+  // Follow the conversation once it moves, but open on Up next.
+  useEffect(() => {
+    if (!opened.current) {
+      opened.current = true;
+      return;
+    }
+    const main = end.current?.closest("main");
+    main?.scrollTo({ top: main.scrollHeight, behavior: "smooth" });
+  }, [messages, sending]);
+
+  const shown = all ? messages : messages.slice(-RECENT);
+
+  function addFiles(list: FileList | null) {
+    if (!list) return;
+    const room = MAX_PHOTOS - drafts.length;
+    const picked = [...list].filter((f) => f.type.startsWith("image/")).slice(0, room);
+    if (list.length > room) setError(`Add up to ${MAX_PHOTOS} photos at a time.`);
+    setDrafts((d) => [...d, ...picked.map((file) => ({ file, url: URL.createObjectURL(file) }))]);
+  }
+
+  async function send(message: string) {
+    const body = message.trim();
+    if (sending || (!body && !drafts.length)) return;
+    setError(null);
+    const photos = drafts;
+    setSending({ text: body, images: photos.map((p) => p.url) });
+
+    try {
+      const files = [];
+      if (photos.length) {
+        const supabase = createClient();
+        for (const { file } of photos) {
+          const safe = file.name.replace(/[^\w.-]+/g, "-").slice(-80) || "photo.jpg";
+          const path = `projects/${projectId}/chat/${crypto.randomUUID()}-${safe}`;
+          const { error: upErr } = await supabase.storage
+            .from("project-files")
+            .upload(path, file, { contentType: file.type || "image/jpeg" });
+          if (upErr) throw new Error("upload");
+          files.push({ path, name: file.name, mime: file.type || "image/jpeg", size: file.size });
+        }
+      }
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ projectId, text: body, files }),
+      });
+      const result = (await res.json().catch(() => null)) as {
+        ok: boolean;
+        error?: string;
+        saved?: boolean;
+      } | null;
+      if (!result?.ok) {
+        setError(result?.error ?? "That didn't send. Check your connection and try again.");
+        if (!result?.saved) {
+          setSending(null);
+          return;
+        }
+      }
+      setText("");
+      setDrafts([]);
+      router.refresh();
+    } catch (e) {
+      setSending(null);
+      setError(
+        e instanceof Error && e.message === "upload"
+          ? "A photo didn't upload. Check your connection and try again."
+          : "That didn't send. Check your connection and try again.",
+      );
+    }
+  }
+
+  const busy = sending != null;
+
+  return (
+    <section aria-label="Chat" className="grid gap-3">
+      <div className="flex flex-col gap-3" aria-live="polite">
+        {!messages.length && <Bubble role="assistant">{canEdit ? WELCOME : WELCOME_VIEWER}</Bubble>}
+        {shown.length < messages.length && (
+          <button
+            type="button"
+            className="text-accent min-h-11 self-center text-[14px] font-medium"
+            onClick={() => setAll(true)}
+          >
+            Show earlier messages
+          </button>
+        )}
+        {shown.map((m) => (
+          <div
+            key={m.id}
+            className={`grid max-w-[94%] gap-2 md:max-w-[88%] ${m.role === "user" && m.mine ? "justify-items-end self-end" : ""}`}
+          >
+            {m.author && <p className="text-muted -mb-1 text-[12.5px] font-semibold">{m.author}</p>}
+            {m.images.length > 0 && <Thumbs urls={m.images} />}
+            {m.text && (
+              <Bubble role={m.role} other={m.role === "user" && !m.mine}>
+                {m.text}
+              </Bubble>
+            )}
+            {m.cards.map((c) => (
+              <ProposalCard key={c.id} card={c} canEdit={canEdit} />
+            ))}
+          </div>
+        ))}
+        {sending && (
+          <>
+            {(sending.text || sending.images.length > 0) && (
+              <div className="grid max-w-[94%] justify-items-end gap-2 self-end">
+                {sending.images.length > 0 && <Thumbs urls={sending.images} />}
+                {sending.text && <Bubble role="user">{sending.text}</Bubble>}
+              </div>
+            )}
+            <Bubble role="assistant">
+              <span className="text-muted animate-pulse">
+                {sending.images.length ? "Reading that…" : "Thinking…"}
+              </span>
+            </Bubble>
+          </>
+        )}
+        <div ref={end} />
+      </div>
+
+      <form
+        className="border-line bg-bg sticky -bottom-3 -mx-[max(16px,env(safe-area-inset-left))] grid gap-2 border-t px-[max(10px,env(safe-area-inset-left))] pt-2 pb-3 md:mx-0 md:rounded md:border md:px-2"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void send(text);
+        }}
+      >
+        {drafts.length > 0 && (
+          <ul className="flex flex-wrap gap-2 pt-1" aria-label="Photos to send">
+            {drafts.map((d, i) => (
+              <li key={d.url} className="relative">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={d.url}
+                  alt=""
+                  className="border-line size-14 rounded border object-cover"
+                />
+                <button
+                  type="button"
+                  aria-label="Remove photo"
+                  className="bg-ink text-paper absolute -top-2 -right-2 grid size-6 place-items-center rounded-full text-[13px]"
+                  onClick={() => setDrafts((x) => x.filter((_, j) => j !== i))}
+                >
+                  ×
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+        {suggestions.length > 0 && !busy && (
+          <div className="-mx-1 flex [scrollbar-width:none] gap-1.5 overflow-x-auto px-1 pb-0.5 md:flex-wrap">
+            {suggestions.map((s) => (
+              <button
+                key={s}
+                type="button"
+                className="border-line bg-paper hover:border-accent min-h-9 flex-none rounded-full border px-3 text-[13.5px]"
+                onClick={() => void send(s)}
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+        )}
+        <div className="flex items-end gap-2">
+          {canEdit && (
+            <label
+              className="border-line bg-paper grid size-11 flex-none cursor-pointer place-items-center rounded border"
+              title="Add photos of invoices, samples or progress"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="stroke-ink size-5"
+                aria-hidden="true"
+              >
+                <path d="M4 7h3l2-3h6l2 3h3v13H4z" />
+                <circle cx="12" cy="13" r="4" />
+              </svg>
+              <span className="sr-only">Add photos</span>
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                hidden
+                disabled={busy}
+                onChange={(e) => {
+                  addFiles(e.target.files);
+                  e.target.value = "";
+                }}
+              />
+            </label>
+          )}
+          <textarea
+            ref={box}
+            aria-label="Message"
+            rows={1}
+            value={text}
+            maxLength={4000}
+            placeholder={
+              canEdit ? "Tell me what happened, or add an invoice photo…" : "Ask about the project…"
+            }
+            className="border-line bg-paper placeholder:text-muted/70 [field-sizing:content] max-h-36 min-h-11 min-w-0 flex-1 resize-none rounded border px-3 py-2 text-base"
+            onChange={(e) => setText(e.target.value)}
+            onKeyDown={(e) => {
+              if (
+                e.key === "Enter" &&
+                !e.shiftKey &&
+                window.matchMedia("(pointer: fine)").matches
+              ) {
+                e.preventDefault();
+                void send(text);
+              }
+            }}
+          />
+          <button
+            className="bg-accent text-accent-ink min-h-11 flex-none rounded px-4 text-[15px] font-semibold disabled:opacity-50"
+            disabled={busy || (!text.trim() && !drafts.length)}
+          >
+            Send
+          </button>
+        </div>
+        {error && (
+          <p role="alert" className="bg-bad-soft rounded px-3 py-2 text-sm">
+            {error}
+          </p>
+        )}
+      </form>
+    </section>
+  );
+}
+
+function Bubble({
+  role,
+  other,
+  children,
+}: {
+  role: "user" | "assistant";
+  other?: boolean;
+  children: React.ReactNode;
+}) {
+  const style =
+    role === "assistant"
+      ? "bg-paper border border-line rounded-bl-[3px]"
+      : other
+        ? "bg-pending-soft rounded-bl-[3px]"
+        : "bg-accent text-accent-ink rounded-br-[3px]";
+  return (
+    <div
+      className={`w-fit rounded-xl px-3 py-2 text-[15px] leading-snug [overflow-wrap:anywhere] whitespace-pre-wrap ${style}`}
+    >
+      {children}
+    </div>
+  );
+}
+
+function Thumbs({ urls }: { urls: string[] }) {
+  return (
+    <div className="flex flex-wrap justify-end gap-1.5">
+      {urls.map((u) => (
+        <a key={u} href={u} target="_blank" rel="noreferrer">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={u}
+            alt="Attached photo"
+            className="border-line size-22 rounded border object-cover"
+          />
+        </a>
+      ))}
+    </div>
+  );
+}

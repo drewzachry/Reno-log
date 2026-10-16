@@ -32,7 +32,8 @@ export const turnRequestSchema = z.object({
     .max(8),
 });
 export type TurnRequest = z.infer<typeof turnRequestSchema>;
-export type TurnResult = { ok: true } | { ok: false; error: string };
+/** saved: the person's message was stored, so the composer can clear even on an error. */
+export type TurnResult = { ok: true } | { ok: false; error: string; saved?: boolean };
 
 const BUCKET = "project-files";
 /** Longest side sent to the model; the original stays in Storage untouched. */
@@ -275,7 +276,7 @@ export async function chatTurn(req: TurnRequest): Promise<TurnResult> {
       e instanceof Anthropic.APIError ? e.status : "",
       e instanceof Error ? e.message : "",
     );
-    return { ok: false, error: apiErrorMessage(e) };
+    return { ok: false, error: apiErrorMessage(e), saved: true };
   }
 
   const { data: saved, error: saveError } = await admin
@@ -285,7 +286,7 @@ export async function chatTurn(req: TurnRequest): Promise<TurnResult> {
     .single();
   if (saveError || !saved) {
     console.error("chat: saving reply failed", saveError?.code, saveError?.message);
-    return { ok: false, error: userMessage(saveError) };
+    return { ok: false, error: userMessage(saveError), saved: true };
   }
   if (cards.length) {
     const { error } = await admin

@@ -6,8 +6,8 @@ import { createClient } from "@/lib/supabase/client";
 
 /**
  * Keeps the screen current when someone else changes the project. Every
- * change writes a history event, so one Realtime subscription to this
- * project's events is enough. Also refreshes when the app comes back to the
+ * change writes a history event, so Realtime on this project's events (plus
+ * chat messages and cards) is enough. Also refreshes when the app comes back to the
  * foreground, in case the connection slept while the phone was locked.
  */
 export function LiveRefresh({ projectId }: { projectId: string }) {
@@ -37,6 +37,27 @@ export function LiveRefresh({ projectId }: { projectId: string }) {
             event: "INSERT",
             schema: "public",
             table: "events",
+            filter: `project_id=eq.${projectId}`,
+          },
+          refresh,
+        )
+        // Chat replies and cards logged or skipped on another phone.
+        .on(
+          "postgres_changes",
+          {
+            event: "INSERT",
+            schema: "public",
+            table: "messages",
+            filter: `project_id=eq.${projectId}`,
+          },
+          refresh,
+        )
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "proposals",
             filter: `project_id=eq.${projectId}`,
           },
           refresh,

@@ -2,6 +2,7 @@ import { PageHeader, SectionTitle } from "@/components/page";
 import { chosenName } from "@/lib/names";
 import { getSession } from "@/lib/projects";
 import { can, ROLE_HINT, ROLE_LABEL, type Role } from "@/lib/roles";
+import { FactList } from "./FactList";
 import { InviteForm } from "./InviteForm";
 import { NameForm } from "./NameForm";
 import { PeopleList, type PendingInvite, type Person } from "./PeopleList";
@@ -20,7 +21,7 @@ export default async function SettingsPage() {
   const { supabase, user, myName, current } = await getSession();
   if (!user || !current) return null;
 
-  const [{ data: members }, { data: invites }] = await Promise.all([
+  const [{ data: members }, { data: invites }, { data: facts }] = await Promise.all([
     supabase
       .from("project_members")
       .select("user_id, role, profile:profiles!project_members_user_id_fkey(display_name, email)")
@@ -35,6 +36,12 @@ export default async function SettingsPage() {
       .is("revoked_at", null)
       .gt("expires_at", new Date().toISOString())
       .order("created_at", { ascending: false }),
+    supabase
+      .from("project_facts")
+      .select("id, fact, category")
+      .eq("project_id", current.id)
+      .is("retired_at", null)
+      .order("created_at"),
   ]);
 
   const people: Person[] = (members ?? []).map((m) => ({
@@ -77,6 +84,11 @@ export default async function SettingsPage() {
           </div>
         </section>
       )}
+
+      <section aria-labelledby="remembers">
+        <SectionTitle id="remembers">What the app remembers</SectionTitle>
+        <FactList facts={facts ?? []} canEdit={can.edit(current.role)} />
+      </section>
 
       <section aria-labelledby="you">
         <SectionTitle id="you">You</SectionTitle>
