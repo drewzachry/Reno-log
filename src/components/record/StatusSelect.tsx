@@ -2,18 +2,22 @@
 
 import { useState, useTransition } from "react";
 import { setDecisionStatus } from "@/lib/actions/record";
-import { STATUSES, type Status } from "@/lib/record/types";
+import { OPEN, STATUSES, type Status } from "@/lib/record/types";
 
+/** Compact status control; saves as soon as it changes. */
 export function StatusSelect({ id, title, status }: { id: string; title: string; status: Status }) {
   const [value, setValue] = useState(status);
   const [error, setError] = useState<string>();
   const [pending, start] = useTransition();
+  const made = !OPEN.has(value);
 
   return (
-    <div className="grid gap-1 md:justify-items-end">
+    <div className="flex flex-wrap items-center gap-2">
       <select
         aria-label={`Status for ${title}`}
-        className="border-line bg-bg min-h-10 w-full rounded border px-2 text-[15px] md:min-h-0 md:w-auto md:py-1 md:text-[12.5px]"
+        className={`min-h-10 rounded-full border px-3 pr-8 text-[14px] font-medium ${
+          made ? "border-ok/40 bg-ok-soft text-ok" : "border-line bg-bg text-ink"
+        } ${pending ? "opacity-60" : ""}`}
         value={value}
         disabled={pending}
         onChange={(e) => {
@@ -36,6 +40,7 @@ export function StatusSelect({ id, title, status }: { id: string; title: string;
           </option>
         ))}
       </select>
+      {pending && <span className="text-muted text-xs">Saving…</span>}
       {error && (
         <p role="alert" className="text-bad text-xs">
           {error}

@@ -1,5 +1,5 @@
 import { EventList, type EventRow } from "@/components/record/EventList";
-import { ui } from "@/components/ui";
+import { EmptyState, PageHeader } from "@/components/page";
 import { getSession } from "@/lib/projects";
 import { viewerTimeZone } from "@/lib/record/load";
 
@@ -26,15 +26,12 @@ export default async function HistoryPage() {
 
   return (
     <section>
-      <h1 className={ui.h1}>History</h1>
-      <p className="text-muted mb-3 max-w-[62ch]">
-        Every confirmed change, newest first. Nothing is overwritten: when a decision changes, the
-        old choice stays here with the date.
-      </p>
+      <PageHeader
+        title="History"
+        lede="Every change, newest first. Nothing is overwritten: when a choice changes, the old one stays here."
+      />
       {events.length === 0 ? (
-        <p className="border-line text-muted rounded border border-dashed p-4 text-[13.5px]">
-          Nothing logged yet.
-        </p>
+        <EmptyState>Nothing logged yet.</EmptyState>
       ) : (
         <EventList
           events={events}

@@ -36,3 +36,12 @@ const SHORT = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric",
 export function shortDate(d: ISODate | null | undefined): string {
   return d ? SHORT.format(new Date(`${d}T00:00:00Z`)) : "—";
 }
+
+/** Plain-English distance to a date: "Today", "in 3 days", "18 days late". */
+export function daysText(n: number, past: "late" | "ago" = "late"): string {
+  if (n === 0) return "Today";
+  if (n === 1) return "Tomorrow";
+  if (n > 1) return `in ${n} days`;
+  if (n === -1) return past === "late" ? "1 day late" : "Yesterday";
+  return past === "late" ? `${-n} days late` : `${-n} days ago`;
+}

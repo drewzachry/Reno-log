@@ -26,7 +26,7 @@ export function MoveForm({
       : null;
 
   return (
-    <div className="col-span-full">
+    <div>
       {!open && !ripple && (
         <button
           type="button"

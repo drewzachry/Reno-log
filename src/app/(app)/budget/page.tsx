@@ -1,13 +1,12 @@
-import Link from "next/link";
-import { ui } from "@/components/ui";
+import { EmptyState, PageHeader, Pill, SectionTitle } from "@/components/page";
 import { getSession } from "@/lib/projects";
 import { bucketStats, budgetTotals, bufferSummary } from "@/lib/record/budget";
 import { shortDate } from "@/lib/record/dates";
 import { loadRecord } from "@/lib/record/load";
 import { money } from "@/lib/record/money";
+import { BUCKET_KIND_LABEL, BUCKET_KINDS, type LedgerEntry } from "@/lib/record/types";
 import { can } from "@/lib/roles";
 import { FundingList } from "./FundingList";
-import { BUCKET_KIND_LABEL, BUCKET_KINDS, type LedgerEntry } from "@/lib/record/types";
 
 export const metadata = { title: "Budget" };
 
@@ -18,6 +17,15 @@ const KIND_LABEL: Record<LedgerEntry["kind"], string> = {
   credit: "Credit",
 };
 
+function Stat({ value, label, tone = "" }: { value: string; label: string; tone?: string }) {
+  return (
+    <div className="border-line bg-paper rounded border px-3 py-2.5">
+      <dd className={`text-[19px] font-semibold tabular-nums ${tone}`}>{value}</dd>
+      <dt className="text-muted text-[12.5px]">{label}</dt>
+    </div>
+  );
+}
+
 export default async function BudgetPage() {
   const { supabase, current } = await getSession();
   if (!current) return null;
@@ -25,80 +33,69 @@ export default async function BudgetPage() {
   const totals = budgetTotals(buckets, ledger, decisions);
   const buf = bufferSummary(sources, buckets, ledger, decisions);
   const short = buf.buffer < 0;
-  const name = (id: string | null) => buckets.find((b) => b.id === id)?.name ?? "—";
+  const name = (id: string | null) => buckets.find((b) => b.id === id)?.name ?? "Not linked";
 
   return (
     <section>
-      <h1 className={ui.h1}>Budget</h1>
-      <p className="text-muted mb-2.5 max-w-[62ch]">
-        Money is split the way your contract splits it. Allowances count your chosen items as spent
-        the moment you pick them, so you see an overage before the invoice arrives.
-      </p>
+      <PageHeader
+        title="Budget"
+        lede="Split the way your contract splits it. Allowances count an item as spent the moment you pick it, so you see an overage before the invoice."
+      />
 
-      <dl className="my-2 grid grid-cols-2 gap-2 md:grid-cols-4">
-        {[
-          [money(totals.total), "Total budget", ""],
-          [money(totals.paid), "Paid so far", ""],
-          ...(totals.cushionLeft != null ? [[money(totals.cushionLeft), "Cushion left", ""]] : []),
-          ...(sources.length
-            ? [
-                [
-                  money(Math.abs(buf.buffer)),
-                  short ? "Short by" : "Buffer",
-                  short ? "text-bad" : "",
-                ],
-              ]
-            : []),
-        ].map(([v, l, tone]) => (
-          <div key={l} className="border-ink border-t-2 pt-1.5">
-            <dd className={`font-mono text-base font-medium md:text-[19px] ${tone}`}>{v}</dd>
-            <dt className="text-muted text-[12.5px]">{l}</dt>
-          </div>
-        ))}
+      <dl className="grid grid-cols-2 gap-2 md:grid-cols-4">
+        <Stat value={money(totals.total)} label="Total budget" />
+        <Stat value={money(totals.paid)} label="Paid so far" />
+        {totals.cushionLeft != null && (
+          <Stat value={money(totals.cushionLeft)} label="Cushion left" />
+        )}
+        {sources.length > 0 && (
+          <Stat
+            value={money(Math.abs(buf.buffer))}
+            label={short ? "Short by" : "Buffer"}
+            tone={short ? "text-bad" : "text-ok"}
+          />
+        )}
       </dl>
 
-      <section aria-labelledby="funding" className="mt-4">
-        <h2
-          id="funding"
-          className="font-display text-muted mb-1 text-[13px] font-bold tracking-[.07em] uppercase [font-stretch:95%]"
-        >
-          Money for the project
-        </h2>
-        <p className="text-muted mb-2 max-w-[62ch] text-[13px]">
-          What you’ve set aside and where it comes from. Just names and amounts; nothing is linked
-          to your bank.
+      <section aria-labelledby="funding">
+        <SectionTitle id="funding">Money for the project</SectionTitle>
+        <p className="text-muted -mt-1 mb-2 text-[13px]">
+          Where the money comes from. Names and amounts only; nothing is linked to your bank.
         </p>
         <FundingList sources={sources} canEdit={can.edit(current.role)} />
         {sources.length > 0 && (
           <div
-            className={`mt-2 grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-0.5 rounded px-3 py-2.5 text-[13.5px] ${
-              short ? "bg-bad-soft" : "bg-ok-soft"
-            }`}
+            className={`mt-2 rounded px-3 py-2.5 text-[14px] ${short ? "bg-bad-soft" : "bg-ok-soft"}`}
           >
-            <span>Set aside</span>
-            <span className="text-right font-mono">{money(buf.funds)}</span>
-            <span>Still to pay</span>
-            <span className="text-right font-mono">− {money(buf.toPay)}</span>
-            <span className="border-ink/20 border-t pt-0.5 font-semibold">
-              {short ? "Short by" : "Buffer"}
-            </span>
-            <span className="border-ink/20 border-t pt-0.5 text-right font-mono font-semibold">
-              {money(Math.abs(buf.buffer))}
-            </span>
-            <span className="text-muted col-span-2 mt-1 text-[12.5px]">
+            <dl className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-0.5">
+              <dt>Set aside</dt>
+              <dd className="text-right tabular-nums">{money(buf.funds)}</dd>
+              <dt>Still to pay</dt>
+              <dd className="text-right tabular-nums">− {money(buf.toPay)}</dd>
+              <dt className="border-ink/15 border-t pt-1 font-semibold">
+                {short ? "Short by" : "Buffer"}
+              </dt>
+              <dd className="border-ink/15 border-t pt-1 text-right font-semibold tabular-nums">
+                {money(Math.abs(buf.buffer))}
+              </dd>
+            </dl>
+            <details className="text-muted mt-1.5 text-[13px]">
+              <summary className="min-h-8 cursor-pointer">How is this worked out?</summary>
               Still to pay counts each budget line in full (or what it’s really costing, if that’s
-              more), minus what’s been paid. The cushion counts too, so the buffer is on the safe
+              more), minus what’s been paid. The cushion counts too, so the buffer stays on the safe
               side.
-            </span>
+            </details>
           </div>
         )}
       </section>
 
       {buckets.length === 0 && (
-        <p className="border-line text-muted mt-3 rounded border border-dashed p-4 text-[13.5px]">
-          No budget yet. Soon you’ll set it up from your contract: the contract price, each
-          allowance, and a cushion for surprises.
-        </p>
+        <div className="mt-6">
+          <EmptyState>
+            No budget lines yet. Soon you’ll set them up from your contract: the price, each
+            allowance and a cushion for surprises.
+          </EmptyState>
+        </div>
       )}
 
       {BUCKET_KINDS.map((kind) => {
@@ -106,10 +103,8 @@ export default async function BudgetPage() {
         if (!list.length) return null;
         return (
           <div key={kind}>
-            <h2 className="font-display text-muted mt-[18px] mb-1.5 text-[13px] font-bold tracking-[.07em] uppercase [font-stretch:95%]">
-              {BUCKET_KIND_LABEL[kind]}
-            </h2>
-            <div className="grid gap-2.5">
+            <SectionTitle>{BUCKET_KIND_LABEL[kind]}</SectionTitle>
+            <div className="grid gap-2">
               {list.map((b) => {
                 const st = bucketStats(b, ledger, decisions);
                 const over = st.left < 0;
@@ -119,14 +114,18 @@ export default async function BudgetPage() {
                     key={b.id}
                     className="border-line bg-paper grid gap-1.5 rounded border px-3 py-2.5"
                   >
-                    <div className="flex flex-wrap justify-between gap-2">
+                    <div className="flex items-baseline justify-between gap-2">
                       <span className="font-semibold">{b.name}</span>
-                      <span className="font-mono">
-                        {money(st.used)} / {money(b.budget_cents)}
-                      </span>
+                      {over ? (
+                        <Pill tone="bad">Over by {money(-st.left)}</Pill>
+                      ) : (
+                        <span className="text-muted text-[13.5px] tabular-nums">
+                          {money(st.left)} left
+                        </span>
+                      )}
                     </div>
                     <div
-                      className="bg-bg relative h-2 overflow-hidden rounded"
+                      className="bg-bg relative h-2 overflow-hidden rounded-full"
                       role="meter"
                       aria-label={`${b.name} used`}
                       aria-valuemin={0}
@@ -134,28 +133,26 @@ export default async function BudgetPage() {
                       aria-valuenow={Math.min(st.used, b.budget_cents)}
                     >
                       <i
-                        className={`absolute inset-y-0 left-0 rounded ${over ? "bg-bad" : "bg-accent"}`}
+                        className={`absolute inset-y-0 left-0 rounded-full ${over ? "bg-bad" : "bg-accent"}`}
                         style={{ width: `${pct}%` }}
                       />
                     </div>
-                    <p className="text-muted flex flex-wrap gap-x-3 text-[12.5px]">
-                      <span>
-                        Paid <span className="font-mono">{money(st.paid)}</span>
+                    <p className="text-muted flex flex-wrap gap-x-3 text-[13px]">
+                      <span className="tabular-nums">
+                        <b className="text-ink font-semibold">{money(st.used)}</b> of{" "}
+                        {money(b.budget_cents)}
                       </span>
+                      {kind === "allowance" && st.chosen > 0 && (
+                        <span className="tabular-nums">{money(st.chosen)} chosen</span>
+                      )}
+                      {st.paid > 0 && st.paid !== st.used && (
+                        <span className="tabular-nums">{money(st.paid)} paid</span>
+                      )}
                       {st.changeOrders > 0 && (
-                        <span>
-                          Change orders <span className="font-mono">{money(st.changeOrders)}</span>
+                        <span className="tabular-nums">
+                          {money(st.changeOrders)} in change orders
                         </span>
                       )}
-                      {kind === "allowance" && (
-                        <span>
-                          Chosen <span className="font-mono">{money(st.chosen)}</span>
-                        </span>
-                      )}
-                      <span className={over ? "text-bad font-medium" : ""}>
-                        {over ? "Over by " : "Left "}
-                        <span className="font-mono">{money(Math.abs(st.left))}</span>
-                      </span>
                     </p>
                   </article>
                 );
@@ -165,56 +162,38 @@ export default async function BudgetPage() {
         );
       })}
 
-      <h2 className="font-display text-muted mt-[18px] mb-1.5 flex justify-between text-[13px] font-bold tracking-[.07em] uppercase [font-stretch:95%]">
-        <span>Invoices, payments and change orders</span>
-        <span className="font-mono">{ledger.length}</span>
-      </h2>
+      <SectionTitle count={ledger.length || undefined}>Invoices and payments</SectionTitle>
       {ledger.length === 0 ? (
-        <p className="border-line text-muted rounded border border-dashed p-4 text-[13.5px]">
-          No invoices yet. Soon you’ll snap a photo of one in the chat.
-        </p>
+        <EmptyState>No invoices yet. Soon you’ll snap a photo of one in the chat.</EmptyState>
       ) : (
-        <ul className="divide-line divide-y text-[13.5px]">
+        <ul className="divide-line border-line bg-paper divide-y rounded border text-[14px]">
           {ledger.map((l) => (
-            <li
-              key={l.id}
-              className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-2.5 gap-y-0.5 py-2.5"
-            >
-              <span className="text-muted text-[12.5px]">
-                <span className="font-mono">{shortDate(l.date)}</span> · {KIND_LABEL[l.kind]}
-                {l.change_order_status && l.change_order_status !== "approved" && (
-                  <span className="border-line bg-warn-soft text-ink ml-1.5 rounded-full border px-2 py-px text-[11.5px]">
-                    {l.change_order_status === "proposed" ? "Not approved yet" : "Rejected"}
-                  </span>
-                )}
-              </span>
-              <span className="row-span-2 self-center text-right font-mono text-[15px]">
+            <li key={l.id} className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 px-3 py-2.5">
+              <span className="font-semibold">{l.vendor}</span>
+              <span className="text-right font-semibold tabular-nums">
                 {l.kind === "credit" ? "−" : ""}
                 {money(l.amount_cents)}
               </span>
-              <span className="font-semibold">{l.vendor}</span>
               {l.description && <span className="col-span-2">{l.description}</span>}
-              <span className="text-muted col-span-2 text-[12.5px]">{name(l.bucket_id)}</span>
-              {l.flags.length > 0 && (
-                <span className="col-span-2 flex flex-wrap gap-1">
-                  {l.flags.map((f) => (
-                    <span key={f} className="bg-warn-soft rounded-full px-2 py-px text-[11.5px]">
-                      {f}
-                    </span>
-                  ))}
+              <span className="text-muted col-span-2 mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12.5px]">
+                <span>
+                  {shortDate(l.date)} · {KIND_LABEL[l.kind]} · {name(l.bucket_id)}
                 </span>
-              )}
+                {l.change_order_status === "proposed" && <Pill tone="warn">Not approved yet</Pill>}
+                {l.change_order_status === "rejected" && <Pill>Rejected</Pill>}
+                {l.flags.map((f) => (
+                  <Pill key={f} tone="warn">
+                    {f}
+                  </Pill>
+                ))}
+              </span>
             </li>
           ))}
         </ul>
       )}
-      <p className="text-muted mt-4 text-[12.5px]">
-        Proposed change orders don’t count until approved.{" "}
-        <Link href="/history" className="text-accent">
-          See every change
-        </Link>
-        .
-      </p>
+      {ledger.some((l) => l.change_order_status === "proposed") && (
+        <p className="text-muted mt-2 text-[12.5px]">Change orders count once they’re approved.</p>
+      )}
     </section>
   );
 }

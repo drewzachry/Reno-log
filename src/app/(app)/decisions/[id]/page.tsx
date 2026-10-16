@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { EventList, type EventRow } from "@/components/record/EventList";
-import { ui } from "@/components/ui";
+import { PageHeader, Pill, SectionTitle } from "@/components/page";
+import { urgency } from "@/components/record/DecisionCard";
 import { getSession } from "@/lib/projects";
-import { shortDate } from "@/lib/record/dates";
+import { daysText, shortDate } from "@/lib/record/dates";
 import { loadRecord, viewerTimeZone } from "@/lib/record/load";
 import { money } from "@/lib/record/money";
 import { OPEN, STATUS_LABEL } from "@/lib/record/types";
@@ -34,30 +35,35 @@ export default async function DecisionPage({ params }: { params: Promise<{ id: s
   const bucket = buckets.find((b) => b.id === d.bucket_id);
   const open = OPEN.has(d.status);
   const n = d.daysLeft;
+  const u = urgency(d);
 
   return (
-    <article className="grid max-w-xl gap-5">
+    <article className="grid gap-4">
       <div>
-        <Link href="/decisions" className="text-accent text-sm">
+        <Link
+          href="/decisions"
+          className="text-accent inline-flex min-h-9 items-center text-[14px]"
+        >
           ← All decisions
         </Link>
-        <p className={`${ui.eyebrow} mt-3`}>
-          {d.room}
-          {d.category ? ` · ${d.category}` : ""}
-        </p>
-        <h1 className={ui.h1}>{d.title}</h1>
-        {d.why && <p className="text-muted mt-1">{d.why}</p>}
+        <PageHeader
+          eyebrow={[d.room, d.category].filter(Boolean).join(" · ")}
+          title={d.title}
+          lede={d.why ?? undefined}
+        >
+          <p className="mt-2 flex flex-wrap gap-2">
+            <Pill tone={open ? "neutral" : "ok"}>{STATUS_LABEL[d.status]}</Pill>
+            {u === "late" && <Pill tone="bad">{daysText(n!)}</Pill>}
+            {u === "soon" && <Pill tone="warn">Due {daysText(n!).toLowerCase()}</Pill>}
+          </p>
+        </PageHeader>
       </div>
 
-      <dl className="border-line bg-paper grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1.5 rounded border p-3 text-[14px]">
-        <dt className="text-muted">Status</dt>
-        <dd>{STATUS_LABEL[d.status]}</dd>
+      <dl className="border-line bg-paper grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-2 rounded border p-3 text-[14px]">
         <dt className="text-muted">Decide by</dt>
-        <dd
-          className={`font-mono ${open && n != null && n < 0 ? "text-bad" : open && n != null && n <= 14 ? "text-warn" : ""}`}
-        >
+        <dd>
           {d.decideBy
-            ? `${shortDate(d.decideBy)}${open && n != null ? (n < 0 ? ` · ${-n}d late` : ` · in ${n}d`) : ""}`
+            ? `${shortDate(d.decideBy)}${open && n != null ? ` (${daysText(n).toLowerCase()})` : ""}`
             : "Once the schedule has dates"}
         </dd>
         <dt className="text-muted">Why then</dt>
@@ -71,7 +77,9 @@ export default async function DecisionPage({ params }: { params: Promise<{ id: s
             <dt className="text-muted">Picked</dt>
             <dd>
               {d.selection}
-              {d.cost_cents != null && <span className="font-mono"> · {money(d.cost_cents)}</span>}
+              {d.cost_cents != null && (
+                <span className="tabular-nums"> · {money(d.cost_cents)}</span>
+              )}
             </dd>
           </>
         )}
@@ -94,8 +102,8 @@ export default async function DecisionPage({ params }: { params: Promise<{ id: s
       </dl>
 
       {can.edit(current.role) && (
-        <section className="grid gap-3">
-          <h2 className="font-display text-lg font-extrabold">Update</h2>
+        <section className="border-line bg-paper rounded border p-3">
+          <SectionTitle as="h2">Update this decision</SectionTitle>
           <DecisionForm
             id={d.id}
             status={d.status}
@@ -108,7 +116,7 @@ export default async function DecisionPage({ params }: { params: Promise<{ id: s
       )}
 
       <section>
-        <h2 className="font-display text-lg font-extrabold">History</h2>
+        <SectionTitle>History</SectionTitle>
         {events?.length ? (
           <EventList
             events={events}

@@ -26,7 +26,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <TabBar />
       <LiveRefresh projectId={current.id} />
       <main className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-[max(16px,env(safe-area-inset-left))] py-3">
-        {children}
+        <div className="mx-auto max-w-2xl md:mx-0">{children}</div>
       </main>
     </div>
   );

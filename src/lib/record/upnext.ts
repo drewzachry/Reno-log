@@ -1,5 +1,6 @@
 import { bucketStats } from "./budget";
 import type { DecisionWithDeadline } from "./deadlines";
+import { daysText } from "./dates";
 import { money } from "./money";
 import { OPEN, type Bucket, type LedgerEntry } from "./types";
 
@@ -34,7 +35,7 @@ export function upNextItems(
         n,
         text: `Decide: ${d.title} (${d.room})`,
         severity: n < 0 ? "bad" : n <= 7 ? "warn" : "",
-        when: n < 0 ? `${-n}d late` : n === 0 ? "Today" : `in ${n}d`,
+        when: daysText(n),
         href: `/decisions/${d.id}`,
       });
     } else if (d.status === "decided" && n < 0 && d.lead_weeks >= 3) {
@@ -42,7 +43,7 @@ export function upNextItems(
         n: n + 0.5,
         text: `Place the order: ${d.title} (${d.room})`,
         severity: "warn",
-        when: `${-n}d late`,
+        when: daysText(n),
         href: `/decisions/${d.id}`,
       });
     }

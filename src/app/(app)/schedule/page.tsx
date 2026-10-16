@@ -1,6 +1,6 @@
-import { ui } from "@/components/ui";
+import { PageHeader, Pill } from "@/components/page";
 import { getSession } from "@/lib/projects";
-import { daysBetween, shortDate } from "@/lib/record/dates";
+import { daysBetween, daysText, shortDate } from "@/lib/record/dates";
 import { loadRecord } from "@/lib/record/load";
 import { OPEN } from "@/lib/record/types";
 import { can } from "@/lib/roles";
@@ -13,42 +13,49 @@ export default async function SchedulePage() {
   if (!current) return null;
   const { milestones, decisions, today } = await loadRecord(supabase, current.id);
   const editable = can.edit(current.role);
+  const nextKey = milestones.find((m) => m.date && daysBetween(today, m.date) >= 0)?.key;
 
   return (
     <section>
-      <h1 className={ui.h1}>Schedule</h1>
-      <p className="text-muted mb-2.5 max-w-[62ch]">
-        The key moments that set your decision deadlines. When your contractor moves a date, change
-        it here and every deadline tied to it shifts.
-      </p>
-      <ol className="grid gap-1.5">
+      <PageHeader
+        title="Schedule"
+        lede="The big moments that set your deadlines. When your contractor moves one, change it here and every deadline tied to it moves too."
+      />
+      <ol className="grid gap-2">
         {milestones.map((m) => {
           const n = m.date ? daysBetween(today, m.date) : null;
           const openCount = decisions.filter(
             (d) => d.milestone_key === m.key && OPEN.has(d.status),
           ).length;
+          const past = n != null && n < 0;
           return (
             <li
               key={m.key}
-              className="border-line bg-paper grid grid-cols-[auto_minmax(0,1fr)_auto] items-baseline gap-x-3 gap-y-1 rounded border px-3 py-2.5"
+              className={`bg-paper grid grid-cols-[76px_minmax(0,1fr)] gap-x-3 rounded border px-3 py-3 ${
+                m.key === nextKey
+                  ? "border-accent/50 shadow-[inset_3px_0_0_var(--accent)]"
+                  : "border-line"
+              } ${past ? "opacity-70" : ""}`}
             >
-              <span className="font-mono text-[13px]">{shortDate(m.date)}</span>
-              <span className="font-semibold">{m.label}</span>
-              <span className="text-muted font-mono text-xs">
-                {n == null ? "" : n < 0 ? "done" : n === 0 ? "today" : `in ${n}d`}
-              </span>
-              <p className="text-muted col-start-2 col-end-4 text-[12.5px]">
-                {m.explanation}
-                {openCount > 0 && (
-                  <b className="text-ink">
-                    {" "}
-                    {openCount} open decision{openCount > 1 ? "s" : ""} tied to this.
-                  </b>
+              <div>
+                <p className="font-semibold tabular-nums">
+                  {m.date ? shortDate(m.date) : "No date"}
+                </p>
+                <p className="text-muted text-[12.5px]">
+                  {n == null ? "" : past ? "done" : daysText(n)}
+                </p>
+              </div>
+              <div className="min-w-0">
+                <p className="flex flex-wrap items-center gap-2">
+                  <span className="font-semibold">{m.label}</span>
+                  {m.key === nextKey && <Pill tone="accent">Next</Pill>}
+                  {openCount > 0 && <Pill tone={past ? "bad" : "neutral"}>{openCount} open</Pill>}
+                </p>
+                <p className="text-muted mt-0.5 text-[13px]">{m.explanation}</p>
+                {editable && (
+                  <MoveForm milestoneKey={m.key} label={m.label} date={m.date} today={today} />
                 )}
-              </p>
-              {editable && (
-                <MoveForm milestoneKey={m.key} label={m.label} date={m.date} today={today} />
-              )}
+              </div>
             </li>
           );
         })}

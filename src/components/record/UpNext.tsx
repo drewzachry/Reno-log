@@ -4,43 +4,75 @@ import Link from "next/link";
 import { useState } from "react";
 import type { UpNextItem } from "@/lib/record/upnext";
 
-const tone = { bad: "text-bad", warn: "text-warn", "": "text-muted" } as const;
+const tone = {
+  bad: "bg-bad-soft text-bad",
+  warn: "bg-warn-soft text-warn",
+  "": "bg-bg text-muted",
+} as const;
 
-/** The 2–4 most urgent things, as at the top of the prototype's chat. */
+/** The few things that matter now: three, or six when opened; the rest is on Decisions. */
 export function UpNext({ items }: { items: UpNextItem[] }) {
   const [all, setAll] = useState(false);
-  const shown = items.slice(0, all ? 4 : 2);
+  const shown = items.slice(0, all ? 6 : 3);
   return (
-    <section aria-label="Up next" className="border-line bg-paper rounded border px-3.5 py-3">
-      <p className="font-display text-muted text-[11.5px] font-bold tracking-[.09em] uppercase [font-stretch:90%]">
-        Up next{items.length > 4 ? ` · ${items.length} items` : ""}
-      </p>
+    <section aria-label="Up next" className="border-line bg-paper rounded border">
+      <h2 className="font-display text-muted flex items-baseline justify-between px-3.5 pt-3 text-[12.5px] font-bold tracking-[.08em] uppercase [font-stretch:95%]">
+        Up next
+        {items.length > 0 && <span className="tabular-nums">{items.length}</span>}
+      </h2>
       {shown.length ? (
-        <ul className="mt-1.5 grid gap-1">
+        <ul className="divide-line mt-1 divide-y">
           {shown.map((i) => (
             <li key={i.text}>
-              <Link href={i.href} className="flex min-h-9 items-baseline gap-2 text-[13.5px]">
+              <Link
+                href={i.href}
+                className="flex min-h-12 items-center gap-3 px-3.5 py-2 text-[14px]"
+              >
                 <span
-                  className={`w-[74px] flex-none font-mono text-xs font-medium ${tone[i.severity]}`}
+                  className={`w-[92px] flex-none rounded-full px-2 py-0.5 text-center text-[12px] font-semibold whitespace-nowrap ${tone[i.severity]}`}
                 >
                   {i.when}
                 </span>
-                <span>{i.text}</span>
+                <span className="min-w-0 flex-1">{i.text}</span>
+                <span aria-hidden="true" className="text-muted">
+                  ›
+                </span>
               </Link>
             </li>
           ))}
         </ul>
       ) : (
-        <p className="text-muted mt-1 text-sm">Nothing due in the next three weeks.</p>
+        <p className="text-muted px-3.5 pt-1 pb-3 text-[14px]">
+          Nothing due in the next three weeks.
+        </p>
       )}
-      {items.length > 2 && (
+      {items.length > 3 && !all && (
         <button
           type="button"
-          className="text-accent min-h-9 pt-1 text-[13px] font-medium"
-          onClick={() => setAll((a) => !a)}
+          className="border-line text-accent min-h-11 w-full border-t text-[13.5px] font-medium"
+          onClick={() => setAll(true)}
         >
-          {all ? "Show less" : `Show ${Math.min(items.length, 4)}`}
+          Show {Math.min(items.length, 6) - 3} more
         </button>
+      )}
+      {all && (
+        <div className="border-line flex border-t text-[13.5px] font-medium">
+          <button
+            type="button"
+            className="text-muted min-h-11 flex-1"
+            onClick={() => setAll(false)}
+          >
+            Show fewer
+          </button>
+          {items.length > 6 && (
+            <Link
+              href="/decisions"
+              className="text-accent flex min-h-11 flex-1 items-center justify-center"
+            >
+              All deadlines ›
+            </Link>
+          )}
+        </div>
       )}
     </section>
   );

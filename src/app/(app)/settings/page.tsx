@@ -1,4 +1,4 @@
-import { ui } from "@/components/ui";
+import { PageHeader, SectionTitle } from "@/components/page";
 import { chosenName } from "@/lib/names";
 import { getSession } from "@/lib/projects";
 import { can, ROLE_HINT, ROLE_LABEL, type Role } from "@/lib/roles";
@@ -51,18 +51,15 @@ export default async function SettingsPage() {
   }));
 
   return (
-    <div className="grid max-w-xl gap-8">
-      <section>
-        <p className={ui.eyebrow}>Project settings</p>
-        <h1 className={ui.h1}>{current.name}</h1>
-        <p className="text-muted">
-          You’re {{ owner: "the", editor: "an", viewer: "a" }[current.role]}{" "}
-          {ROLE_LABEL[current.role]}: {ROLE_HINT[current.role].toLowerCase()}.
-        </p>
-      </section>
+    <div>
+      <PageHeader
+        eyebrow="Project settings"
+        title={current.name}
+        lede={`You’re ${{ owner: "the", editor: "an", viewer: "a" }[current.role]} ${ROLE_LABEL[current.role]}: ${ROLE_HINT[current.role].toLowerCase()}.`}
+      />
 
-      <section className="grid gap-3">
-        <h2 className="font-display text-lg font-extrabold [font-stretch:105%]">People</h2>
+      <section aria-labelledby="people">
+        <SectionTitle id="people">People</SectionTitle>
         <PeopleList
           people={people}
           invites={pending}
@@ -73,17 +70,19 @@ export default async function SettingsPage() {
       </section>
 
       {can.invite(current.role) && (
-        <section className="grid gap-3">
-          <h2 className="font-display text-lg font-extrabold [font-stretch:105%]">
-            Invite someone
-          </h2>
-          <InviteForm projectName={current.name} />
+        <section aria-labelledby="invite">
+          <SectionTitle id="invite">Invite someone</SectionTitle>
+          <div className="border-line bg-paper rounded border p-3">
+            <InviteForm projectName={current.name} />
+          </div>
         </section>
       )}
 
-      <section className="grid gap-3">
-        <h2 className="font-display text-lg font-extrabold [font-stretch:105%]">You</h2>
-        <NameForm name={chosenName(myName, user.email)} />
+      <section aria-labelledby="you">
+        <SectionTitle id="you">You</SectionTitle>
+        <div className="border-line bg-paper rounded border p-3">
+          <NameForm name={chosenName(myName, user.email)} />
+        </div>
       </section>
     </div>
   );

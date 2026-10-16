@@ -1,4 +1,4 @@
-import { ui } from "@/components/ui";
+import { EmptyState, PageHeader, SectionTitle } from "@/components/page";
 import { getSession } from "@/lib/projects";
 import { shortDate } from "@/lib/record/dates";
 
@@ -26,21 +26,18 @@ export default async function PhotosPage() {
 
   return (
     <section>
-      <h1 className={ui.h1}>Photos</h1>
-      <p className="text-muted mb-2.5 max-w-[62ch]">
-        Progress shots and samples, filed by room and date. Photos of open walls before drywall are
-        the most useful ones you will ever take.
-      </p>
+      <PageHeader
+        title="Photos"
+        lede="Progress shots and samples, filed by room and date. Photos of open walls before drywall are the most useful ones you’ll ever take."
+      />
       {photos.length === 0 ? (
-        <p className="border-line text-muted rounded border border-dashed p-4 text-[13.5px]">
+        <EmptyState>
           No photos yet. Soon you’ll add them in the chat and say what room they’re in.
-        </p>
+        </EmptyState>
       ) : (
         rooms.map((r) => (
           <div key={r}>
-            <h2 className="font-display text-muted mt-[18px] mb-1.5 text-[13px] font-bold tracking-[.07em] uppercase">
-              {r}
-            </h2>
+            <SectionTitle>{r}</SectionTitle>
             <ul className="grid grid-cols-2 gap-2.5 md:grid-cols-[repeat(auto-fill,minmax(140px,1fr))]">
               {photos
                 .filter((p) => (p.room ?? "Other") === r)

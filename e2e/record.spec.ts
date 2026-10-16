@@ -21,20 +21,20 @@ test("the sample project's numbers, and moving rough-in", async ({ page }) => {
   await openSample(page, "sample@example.com");
 
   // Decisions
-  await expect(page.getByText("12 of 32", { exact: true })).toBeVisible();
+  await expect(page.getByText("12 of 32 made", { exact: true })).toBeVisible();
   await expect(groupCount(page, "Overdue")).toHaveText("3");
   await expect(groupCount(page, "Next 3 weeks")).toHaveText("6");
   await expect(groupCount(page, "Later")).toHaveText("11");
   await expect(groupCount(page, "Made")).toHaveText("12");
   await page.getByRole("link", { name: "By stage" }).click();
-  await expect(groupCount(page, "Before rough-in")).toHaveText("9 open / 13");
+  await expect(groupCount(page, "Before rough-in")).toHaveText("9 open of 13");
 
   // Up next on the Chat tab
   await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Chat" }).click();
   const upNext = page.getByRole("region", { name: "Up next" }).getByRole("listitem");
-  await expect(upNext.nth(0)).toHaveText("NowTile allowance is $1,250 over budget");
-  await expect(upNext.nth(1)).toHaveText(
-    "18d lateDecide: Tub (freestanding or alcove) (Primary bath)",
+  await expect(upNext.nth(0)).toContainText("NowTile allowance is $1,250 over budget");
+  await expect(upNext.nth(1)).toContainText(
+    "18 days lateDecide: Tub (freestanding or alcove) (Primary bath)",
   );
 
   // Budget
@@ -43,10 +43,10 @@ test("the sample project's numbers, and moving rough-in", async ({ page }) => {
   await expect(page.getByText("$77,200")).toBeVisible();
   await expect(page.getByText("$26,100", { exact: true }).first()).toBeVisible();
   const tile = page.locator("article", { hasText: "Tile allowance" });
-  await expect(tile).toContainText("$9,250 / $8,000");
+  await expect(tile).toContainText("$9,250 of $8,000");
   await expect(tile).toContainText("Over by $1,250");
   await expect(page.locator("article", { hasText: "Plumbing fixtures allowance" })).toContainText(
-    "Left $2,610",
+    "$2,610 left",
   );
   await expect(page.locator("li", { hasText: "Add blocking for a floating vanity" })).toContainText(
     "Not approved yet",
@@ -56,8 +56,8 @@ test("the sample project's numbers, and moving rough-in", async ({ page }) => {
   await page.goto("/schedule");
   const rough = page.locator("main ol > li").first(); // milestones in order; rough-in is first
   await expect(rough).toContainText("Rough-in");
-  await expect(rough).toContainText("in 24d");
-  await expect(rough).toContainText("9 open decisions tied to this.");
+  await expect(rough).toContainText("in 24 days");
+  await expect(rough).toContainText("9 open");
   await rough.getByRole("button", { name: "Change date" }).click();
   const field = rough.getByLabel("New date for rough-in");
   const current = await field.inputValue();
@@ -69,16 +69,16 @@ test("the sample project's numbers, and moving rough-in", async ({ page }) => {
   await expect(rough.getByRole("status")).toContainText(
     "That moves 13 deadlines later. 9 still need deciding:",
   );
-  await expect(rough).toContainText("in 38d");
+  await expect(rough).toContainText("in 38 days");
 
   // Two of the three overdue items now have time; the tub (6-week lead) is still 4 days late.
   await page.goto("/decisions");
   await expect(groupCount(page, "Overdue")).toHaveText("1");
   await expect(page.locator("article", { hasText: "Tub (freestanding or alcove)" })).toContainText(
-    "4d late",
+    "4 days late",
   );
   await expect(page.locator("article", { hasText: "Range hood type and CFM" })).toContainText(
-    "· 10d",
+    "in 10 days",
   );
 
   // History: exactly one new event, with before and after and the reason.
@@ -128,7 +128,7 @@ test("changing a decision is logged, and a Viewer can't change anything", async 
   await join(viewer, link, "viewer2@example.com", "Vee");
   await expect(viewer.getByRole("banner")).toContainText("Rivera renovation (sample)");
   await viewer.goto("/decisions");
-  await expect(viewer.getByText("13 of 32", { exact: true })).toBeVisible(); // the owner decided the hood
+  await expect(viewer.getByText("13 of 32 made", { exact: true })).toBeVisible(); // the owner decided the hood
   await expect(viewer.getByRole("combobox")).toHaveCount(0);
   await viewer.goto("/schedule");
   await expect(viewer.getByRole("button", { name: /Change date|Set date/ })).toHaveCount(0);

@@ -1,6 +1,6 @@
 import Link from "next/link";
+import { EmptyState, PageHeader, SectionTitle } from "@/components/page";
 import { DecisionCard } from "@/components/record/DecisionCard";
-import { ui } from "@/components/ui";
 import { getSession } from "@/lib/projects";
 import { groupDecisions } from "@/lib/record/deadlines";
 import { loadRecord } from "@/lib/record/load";
@@ -26,65 +26,75 @@ export default async function DecisionsPage({
   const { group } = await searchParams;
   const by: GroupBy = GROUPS.some(([k]) => k === group) ? (group as GroupBy) : "deadline";
   const { decisions, milestones, buckets } = await loadRecord(supabase, current.id);
-  const label = Object.fromEntries(milestones.map((m) => [m.key, m.label]));
   const made = decisions.filter((d) => CHOSEN.has(d.status)).length;
   const groups = groupDecisions(decisions, by, milestones);
   const editable = can.edit(current.role);
+  const pct = decisions.length ? Math.round((made / decisions.length) * 100) : 0;
 
   return (
     <section>
-      <h1 className={ui.h1}>Decisions</h1>
-      <p className="text-muted mb-2.5 max-w-[62ch]">
-        <span className="font-mono">
-          {made} of {decisions.length}
-        </span>{" "}
-        made. Deadlines are worked back from the schedule, so when a date moves, these move with it.
-      </p>
-      <nav
-        aria-label="Group decisions"
-        className="border-line my-1.5 flex overflow-hidden rounded border md:inline-flex"
+      <PageHeader
+        title="Decisions"
+        lede="Deadlines come from the schedule. When a date moves, these move with it."
       >
-        {GROUPS.map(([k, l]) => (
-          <Link
-            key={k}
-            href={`/decisions?group=${k}`}
-            aria-current={k === by ? "true" : undefined}
-            className={`flex min-h-[38px] flex-1 items-center justify-center px-2.5 text-[13px] ${
-              k === by ? "bg-ink text-paper" : ""
-            }`}
-          >
-            {l}
-          </Link>
-        ))}
-      </nav>
+        {decisions.length > 0 && (
+          <div className="mt-3">
+            <p className="text-[14px]">
+              <b className="tabular-nums">{made}</b> of{" "}
+              <span className="tabular-nums">{decisions.length}</span> made
+            </p>
+            <div className="bg-line mt-1 h-1.5 overflow-hidden rounded-full" aria-hidden="true">
+              <div className="bg-ok h-full rounded-full" style={{ width: `${pct}%` }} />
+            </div>
+          </div>
+        )}
+      </PageHeader>
+
+      {decisions.length > 0 && (
+        <nav
+          aria-label="Group decisions"
+          className="border-line bg-paper flex rounded-full border p-0.5 md:inline-flex"
+        >
+          {GROUPS.map(([k, l]) => (
+            <Link
+              key={k}
+              href={`/decisions?group=${k}`}
+              aria-current={k === by ? "true" : undefined}
+              className={`flex min-h-9 flex-1 items-center justify-center rounded-full px-3 text-[13.5px] whitespace-nowrap ${
+                k === by ? "bg-ink text-paper font-semibold" : "text-muted"
+              }`}
+            >
+              {l}
+            </Link>
+          ))}
+        </nav>
+      )}
 
       {decisions.length === 0 ? (
-        <p className="border-line text-muted mt-3 rounded border border-dashed p-4 text-[13.5px]">
-          No decisions yet. Soon you’ll be able to build them from your contract and plans, or tell
-          the chat about your project and it will suggest them.
-        </p>
+        <EmptyState>
+          No decisions yet. Soon you’ll build them from your contract and plans, or the chat will
+          suggest them as you go.
+        </EmptyState>
       ) : (
         groups.map((g) => {
           const open = g.items.filter((d) => OPEN.has(d.status)).length;
           return (
             <div key={g.name}>
-              <h2 className="font-display text-muted mt-[18px] mb-1.5 flex justify-between gap-2 text-[13px] font-bold tracking-[.07em] uppercase [font-stretch:95%]">
-                <span>{g.name}</span>
-                <span className="font-mono">
-                  {by === "deadline" ? g.items.length : `${open} open / ${g.items.length}`}
-                </span>
-              </h2>
+              <SectionTitle
+                count={by === "deadline" ? g.items.length : `${open} open of ${g.items.length}`}
+              >
+                {g.name}
+              </SectionTitle>
               {g.milestone?.explanation && (
-                <p className="text-muted mb-2 max-w-[62ch] text-[13px]">
+                <p className="text-muted -mt-1 mb-2 max-w-[60ch] text-[13px]">
                   {g.milestone.explanation}
                 </p>
               )}
-              <div className="grid gap-1.5">
+              <div className="grid gap-2">
                 {g.items.map((d) => (
                   <DecisionCard
                     key={d.id}
                     d={d}
-                    milestoneLabel={label[d.milestone_key] ?? d.milestone_key}
                     bucket={buckets.find((b) => b.id === d.bucket_id)}
                     canEdit={editable}
                   />

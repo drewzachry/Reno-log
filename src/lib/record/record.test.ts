@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { bucketStats, budgetTotals, bufferSummary, stillToPay } from "./budget";
-import { addDays, daysBetween, shortDate, todayIn } from "./dates";
+import { addDays, daysBetween, daysText, shortDate, todayIn } from "./dates";
 import { decideBy, groupDecisions, withDeadlines } from "./deadlines";
 import { money, parseMoney } from "./money";
 import { sampleProject } from "./sample.fixture";
@@ -29,6 +29,17 @@ describe("dates", () => {
     expect(todayIn("America/Los_Angeles", lateEveningInLA)).toBe("2026-10-17");
     expect(todayIn("UTC", lateEveningInLA)).toBe("2026-10-18");
     expect(todayIn("Not/AZone", lateEveningInLA)).toBe("2026-10-18");
+  });
+
+  it("says how far off a date is in words", () => {
+    expect([0, 1, 3, -1, -18].map((n) => daysText(n))).toEqual([
+      "Today",
+      "Tomorrow",
+      "in 3 days",
+      "1 day late",
+      "18 days late",
+    ]);
+    expect([-1, -40].map((n) => daysText(n, "ago"))).toEqual(["Yesterday", "40 days ago"]);
   });
 
   it("formats short dates", () => {
@@ -166,9 +177,9 @@ describe("sample project math", () => {
     const items = upNextItems(ds, s.buckets, s.ledger);
     expect(items.slice(0, 4).map((i) => `${i.when} | ${i.text}`)).toEqual([
       "Now | Tile allowance is $1,250 over budget",
-      "18d late | Decide: Tub (freestanding or alcove) (Primary bath)",
-      "4d late | Decide: Range hood type and CFM (Kitchen)",
-      "4d late | Decide: Shower valve and trim (Hall bath)",
+      "18 days late | Decide: Tub (freestanding or alcove) (Primary bath)",
+      "4 days late | Decide: Range hood type and CFM (Kitchen)",
+      "4 days late | Decide: Shower valve and trim (Hall bath)",
     ]);
     // The kitchen sink was decided 4 days after its deadline but not ordered.
     expect(items[4].text).toBe("Place the order: Kitchen sink and faucet (Kitchen)");

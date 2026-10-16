@@ -32,13 +32,13 @@ test("accounts for the project and the buffer", async ({ browser }) => {
   await funding.getByLabel("Amount").fill("150000");
   await funding.getByRole("button", { name: "Save", exact: true }).click();
   await expect(funding).toContainText("Short by$8,050");
-  await expect(page.locator("dl")).toContainText("Short by");
+  await expect(page.locator("dl").first()).toContainText("Short by");
 
   // Up next says so on the Chat tab.
   await page.goto("/");
   await expect(
     page.getByRole("region", { name: "Up next" }).getByRole("listitem").first(),
-  ).toHaveText("NowMoney set aside is $8,050 short of what's still to pay");
+  ).toContainText("NowMoney set aside is $8,050 short of what's still to pay");
 
   // Remove the gift; history keeps all three changes.
   await page.goto("/budget");

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { SectionTitle } from "@/components/page";
 import { ui } from "@/components/ui";
 import { cancelInvite, changeRole, removePerson } from "@/lib/actions/people";
 import { ROLE_LABEL, type Role } from "@/lib/roles";
@@ -91,7 +92,7 @@ export function PeopleList({
 
       {invites.length > 0 && (
         <>
-          <h3 className={`${ui.eyebrow} mt-2`}>Waiting to join</h3>
+          <SectionTitle as="h3">Waiting to join</SectionTitle>
           <ul className="divide-line border-line bg-paper divide-y overflow-hidden rounded border">
             {invites.map((i) => (
               <li key={i.id} className="flex flex-wrap items-center gap-2 p-3">

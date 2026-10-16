@@ -1,5 +1,5 @@
+import Link from "next/link";
 import { UpNext } from "@/components/record/UpNext";
-import { ui } from "@/components/ui";
 import { getSession } from "@/lib/projects";
 import { bufferSummary } from "@/lib/record/budget";
 import { loadRecord } from "@/lib/record/load";
@@ -12,13 +12,27 @@ export default async function ChatPage() {
   const buffer = sources.length ? bufferSummary(sources, buckets, ledger, decisions).buffer : null;
 
   return (
-    <div className="grid gap-3">
+    <div className="grid gap-4">
       <UpNext items={upNextItems(decisions, buckets, ledger, 0, buffer)} />
-      <section>
-        <h1 className={ui.h1}>Chat</h1>
-        <p className="text-muted">
-          Coming next: tell me what happened on site, or drop in an invoice or photo, and I’ll turn
-          it into your project record. Until then, update decisions and dates from their tabs.
+      <section
+        aria-label="Chat"
+        className="border-line rounded border border-dashed px-4 py-5 text-center"
+      >
+        <p className="font-semibold">The chat is coming next</p>
+        <p className="text-muted mx-auto mt-1 max-w-[36ch] text-[14px]">
+          You’ll tell it what happened on site or snap an invoice, and it will fill in the record
+          for you.
+        </p>
+        <p className="mt-3 flex flex-wrap justify-center gap-x-4 gap-y-1 text-[14px] font-medium">
+          <Link href="/decisions" className="text-accent">
+            Decisions
+          </Link>
+          <Link href="/schedule" className="text-accent">
+            Schedule
+          </Link>
+          <Link href="/budget" className="text-accent">
+            Budget
+          </Link>
         </p>
       </section>
     </div>

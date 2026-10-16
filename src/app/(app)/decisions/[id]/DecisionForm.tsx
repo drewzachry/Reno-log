@@ -49,7 +49,7 @@ export function DecisionForm({
           maxLength={500}
         />
       </div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid gap-3 min-[420px]:grid-cols-2">
         <div>
           <label className={ui.label} htmlFor="cost">
             Cost
