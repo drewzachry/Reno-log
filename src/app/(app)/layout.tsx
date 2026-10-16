@@ -16,7 +16,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="flex h-dvh flex-col overflow-hidden">
-      <header className="border-line bg-bg sticky top-0 z-10 flex flex-none items-center gap-3 border-b px-[max(16px,env(safe-area-inset-left))] pt-[calc(env(safe-area-inset-top)+12px)] pb-2 md:pt-[env(safe-area-inset-top)] md:pb-0">
+      <header className="border-line bg-bg top-safe sticky top-0 z-10 flex flex-none items-center gap-3 border-b px-[max(16px,env(safe-area-inset-left))] pb-2 md:pb-0">
         <div className="min-w-0 flex-1 md:py-3">
           <Brand subtitle={current.name} />
         </div>

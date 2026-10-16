@@ -108,6 +108,25 @@ body {
   outline-offset: 2px;
 }
 
+/*
+ * Header top padding. iOS blurs a band under the status bar that reaches past
+ * the safe-area inset, about 20pt further in home-screen apps on iOS 26, so
+ * titles get extra room there. Safari and desktop need less.
+ */
+.top-safe {
+  padding-top: calc(env(safe-area-inset-top) + 12px);
+}
+@media (display-mode: standalone) {
+  .top-safe {
+    padding-top: calc(env(safe-area-inset-top) + 32px);
+  }
+}
+@media (min-width: 861px) {
+  .top-safe {
+    padding-top: calc(env(safe-area-inset-top) + 12px);
+  }
+}
+
 /* 16px minimum stops iOS from zooming into form fields. */
 input,
 textarea,

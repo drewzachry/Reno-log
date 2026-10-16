@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { siteOrigin } from "@/lib/origin";
 import { createClient } from "@/lib/supabase/server";
+import { sendErrorMessage } from "./messages";
 import { HANDOFF_COOKIE, HANDOFF_PARAM, newHandoffNonce } from "./handoff";
 import { safeNext } from "./safe-next";
 
@@ -54,14 +55,7 @@ export async function sendCode(_: LoginState, form: FormData): Promise<LoginStat
       code: error.code,
       message: error.message,
     });
-    const tooMany = error.status === 429 || /rate limit/i.test(error.message);
-    return {
-      step: "email",
-      email: parsed.data,
-      error: tooMany
-        ? "Too many sign-in emails just now. Wait a few minutes and try again."
-        : "We couldn't send the email. Check the address and try again.",
-    };
+    return { step: "email", email: parsed.data, error: sendErrorMessage(error) };
   }
   return { step: "code", email: parsed.data };
 }
