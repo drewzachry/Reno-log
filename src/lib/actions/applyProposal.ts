@@ -25,6 +25,12 @@ export type MovedDeadline = {
 
 export type ApplyResult = { ok: true; moved?: MovedDeadline[] } | { ok: false; error: string };
 
+/** Logs the database's reason (code and message only, no user data) for Vercel's logs. */
+function fail(type: string, error: { code?: string; message?: string }): ApplyResult {
+  console.error("applyProposal failed", type, error.code, error.message);
+  return { ok: false, error: userMessage(error) };
+}
+
 export async function applyProposal(input: unknown): Promise<ApplyResult> {
   const parsed = proposalSchema.safeParse(input);
   if (!parsed.success)
@@ -42,7 +48,7 @@ export async function applyProposal(input: unknown): Promise<ApplyResult> {
       p_changes: changes,
       p_reason: p.reason ?? null,
     });
-    return error ? { ok: false, error: userMessage(error) } : { ok: true };
+    return error ? fail(p.type, error) : { ok: true };
   }
 
   if (p.type === "save_funding_source") {
@@ -52,7 +58,7 @@ export async function applyProposal(input: unknown): Promise<ApplyResult> {
       p_name: p.name,
       p_amount_cents: p.amount_cents,
     });
-    return error ? { ok: false, error: userMessage(error) } : { ok: true };
+    return error ? fail(p.type, error) : { ok: true };
   }
 
   if (p.type === "remove_funding_source") {
@@ -60,7 +66,7 @@ export async function applyProposal(input: unknown): Promise<ApplyResult> {
       p_project_id: p.project_id,
       p_id: p.id,
     });
-    return error ? { ok: false, error: userMessage(error) } : { ok: true };
+    return error ? fail(p.type, error) : { ok: true };
   }
 
   const { data, error } = await supabase.rpc("move_milestone", {
@@ -69,7 +75,5 @@ export async function applyProposal(input: unknown): Promise<ApplyResult> {
     p_date: p.date,
     p_reason: p.reason ?? null,
   });
-  return error
-    ? { ok: false, error: userMessage(error) }
-    : { ok: true, moved: (data ?? []) as MovedDeadline[] };
+  return error ? fail(p.type, error) : { ok: true, moved: (data ?? []) as MovedDeadline[] };
 }

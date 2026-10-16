@@ -5,9 +5,20 @@
  */
 const USER_FACING_CODES = new Set(["42501", "22023", "23505", "P0002", "28000"]);
 
+/**
+ * A function or table the app expects isn't in the database yet: the latest
+ * file in supabase/migrations hasn't been run. PGRST202 is PostgREST's
+ * "function not found"; 42883 and 42P01 are Postgres's undefined function
+ * and undefined table.
+ */
+const MISSING_MIGRATION_CODES = new Set(["PGRST202", "PGRST205", "42883", "42P01"]);
+
 export const GENERIC_ERROR = "Something went wrong. Please try again.";
+export const NEEDS_DATABASE_UPDATE =
+  "This part of the app needs a database update. Run the newest SQL file in Supabase, then try again.";
 
 export function userMessage(error: { code?: string; message?: string } | null | undefined): string {
   if (error?.code && USER_FACING_CODES.has(error.code) && error.message) return error.message;
+  if (error?.code && MISSING_MIGRATION_CODES.has(error.code)) return NEEDS_DATABASE_UPDATE;
   return GENERIC_ERROR;
 }
