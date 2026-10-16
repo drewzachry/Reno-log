@@ -1,7 +1,9 @@
 import "server-only";
-import { z } from "zod";
 import { userMessage } from "@/lib/errors";
 import { createClient } from "@/lib/supabase/server";
+import { proposalSchema } from "./proposals";
+
+export type { Proposal } from "./proposals";
 
 /**
  * The one way the project record changes. Each proposal type maps to a
@@ -11,37 +13,6 @@ import { createClient } from "@/lib/supabase/server";
  * proposal cards will call this with what the AI proposed, after the person
  * taps "Log it"; that's why the payload is validated again here.
  */
-
-const isoDate = z.iso.date();
-const statuses = z.enum([
-  "not_started",
-  "exploring",
-  "decided",
-  "ordered",
-  "delivered",
-  "installed",
-]);
-
-export const proposalSchema = z.discriminatedUnion("type", [
-  z.object({
-    type: z.literal("update_decision"),
-    decision_id: z.uuid(),
-    status: statuses.optional(),
-    selection: z.string().trim().max(500).nullable().optional(),
-    cost_cents: z.number().int().min(0).max(1e11).nullable().optional(),
-    bucket_id: z.uuid().nullable().optional(),
-    reason: z.string().trim().max(1000).optional(),
-  }),
-  z.object({
-    type: z.literal("move_milestone"),
-    project_id: z.uuid(),
-    milestone_key: z.string().regex(/^[a-z_]{1,40}$/),
-    date: isoDate,
-    reason: z.string().trim().max(1000).optional(),
-  }),
-]);
-
-export type Proposal = z.infer<typeof proposalSchema>;
 
 export type MovedDeadline = {
   decision_id: string;

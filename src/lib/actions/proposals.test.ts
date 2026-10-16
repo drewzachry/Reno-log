@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { proposalSchema } from "./applyProposal";
+import { proposalSchema } from "./proposals";
 
 const id = "3f1c2a54-9a0b-4c5e-8d7f-0a1b2c3d4e5f";
 
