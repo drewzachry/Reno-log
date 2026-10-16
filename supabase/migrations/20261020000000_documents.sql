@@ -222,3 +222,7 @@ revoke execute on function public.add_document(uuid, uuid, text), public.retry_d
 grant execute on function public.add_document(uuid, uuid, text), public.retry_document(uuid),
   public.remove_document(uuid), public.search_documents(uuid, text, int) to authenticated;
 grant execute on function public.search_documents(uuid, text, int), public.claim_job() to service_role;
+
+-- Reading documents uses AI too, but doesn't count toward the chat's daily limit.
+alter table public.usage add column purpose text not null default 'chat'
+  check (purpose in ('chat', 'document'));

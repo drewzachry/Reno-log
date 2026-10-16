@@ -13,6 +13,13 @@ export type BriefingInput = {
   sources: FundingSource[];
   decisions: DecisionWithDeadline[];
   facts: { fact: string; category: string }[];
+  documents?: {
+    title: string;
+    kind: string;
+    summary: string | null;
+    status: string;
+    facts: { topic: string; detail: string; page: number | null }[];
+  }[];
 };
 
 const LONG = new Intl.DateTimeFormat("en-US", {
@@ -111,6 +118,17 @@ export function buildBriefing(b: BriefingInput): string {
   out.push("", "## Remembered facts");
   for (const f of b.facts) out.push(`- (${f.category}) ${cell(f.fact)}`);
   if (!b.facts.length) out.push("(none yet)");
+
+  const docs = b.documents ?? [];
+  out.push("", "## Documents (summaries and key facts; cite as Title, p.N)");
+  for (const d of docs.filter((x) => x.status === "ready")) {
+    out.push(`### ${cell(d.title)} (${d.kind})`, cell(d.summary));
+    for (const f of d.facts)
+      out.push(`- [${f.topic}] ${cell(f.detail)}${f.page ? ` (p.${f.page})` : ""}`);
+  }
+  const reading = docs.filter((x) => x.status === "reading").map((x) => cell(x.title));
+  if (reading.length) out.push(`Still being read: ${reading.join("; ")}`);
+  if (!docs.length) out.push("(none uploaded yet)");
 
   return out.join("\n");
 }

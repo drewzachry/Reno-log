@@ -1,8 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { DOCUMENT_ACCEPT, uploadToProject, type Uploaded } from "@/lib/upload";
 import { ProposalCard, type CardData } from "./ProposalCard";
 
 export type ChatMessage = {
@@ -14,6 +15,8 @@ export type ChatMessage = {
   /** Someone else's name, for messages from collaborators. */
   author: string | null;
   images: string[];
+  /** Names of attached documents (PDFs and the like), which go to the document reader. */
+  documents: string[];
   cards: (CardData & { created_at: string })[];
 };
 
@@ -26,6 +29,7 @@ const MAX_PHOTOS = 8;
 const RECENT = 10;
 
 type Draft = { file: File; url: string };
+const isImage = (f: File) => f.type.startsWith("image/");
 
 export function Chat({
   projectId,
@@ -72,8 +76,8 @@ export function Chat({
   function addFiles(list: FileList | null) {
     if (!list) return;
     const room = MAX_PHOTOS - drafts.length;
-    const picked = [...list].filter((f) => f.type.startsWith("image/")).slice(0, room);
-    if (list.length > room) setError(`Add up to ${MAX_PHOTOS} photos at a time.`);
+    const picked = [...list].slice(0, room);
+    if (list.length > room) setError(`Add up to ${MAX_PHOTOS} files at a time.`);
     setDrafts((d) => [...d, ...picked.map((file) => ({ file, url: URL.createObjectURL(file) }))]);
   }
 
@@ -82,22 +86,14 @@ export function Chat({
     if (sending || (!body && !drafts.length)) return;
     setError(null);
     const photos = drafts;
-    setSending({ text: body, images: photos.map((p) => p.url) });
+    setSending({
+      text: body,
+      images: photos.filter((p) => isImage(p.file)).map((p) => p.url),
+    });
 
     try {
-      const files = [];
-      if (photos.length) {
-        const supabase = createClient();
-        for (const { file } of photos) {
-          const safe = file.name.replace(/[^\w.-]+/g, "-").slice(-80) || "photo.jpg";
-          const path = `projects/${projectId}/chat/${crypto.randomUUID()}-${safe}`;
-          const { error: upErr } = await supabase.storage
-            .from("project-files")
-            .upload(path, file, { contentType: file.type || "image/jpeg" });
-          if (upErr) throw new Error("upload");
-          files.push({ path, name: file.name, mime: file.type || "image/jpeg", size: file.size });
-        }
-      }
+      const files: Uploaded[] = [];
+      for (const { file } of photos) files.push(await uploadToProject(projectId, "chat", file));
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -121,8 +117,8 @@ export function Chat({
     } catch (e) {
       setSending(null);
       setError(
-        e instanceof Error && e.message === "upload"
-          ? "A photo didn't upload. Check your connection and try again."
+        e instanceof Error && e.message.includes("upload")
+          ? e.message
           : "That didn't send. Check your connection and try again.",
       );
     }
@@ -150,6 +146,20 @@ export function Chat({
           >
             {m.author && <p className="text-muted -mb-1 text-[12.5px] font-semibold">{m.author}</p>}
             {m.images.length > 0 && <Thumbs urls={m.images} />}
+            {m.documents.length > 0 && (
+              <ul className="flex flex-wrap justify-end gap-1.5">
+                {m.documents.map((n) => (
+                  <li key={n}>
+                    <Link
+                      href="/documents"
+                      className="border-line bg-paper inline-block rounded border px-2.5 py-1.5 text-[13px]"
+                    >
+                      📄 {n}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
             {m.text && (
               <Bubble role={m.role} other={m.role === "user" && !m.mine}>
                 {m.text}
@@ -186,18 +196,24 @@ export function Chat({
         }}
       >
         {drafts.length > 0 && (
-          <ul className="flex flex-wrap gap-2 pt-1" aria-label="Photos to send">
+          <ul className="flex flex-wrap gap-2 pt-1" aria-label="Files to send">
             {drafts.map((d, i) => (
               <li key={d.url} className="relative">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={d.url}
-                  alt=""
-                  className="border-line size-14 rounded border object-cover"
-                />
+                {isImage(d.file) ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={d.url}
+                    alt=""
+                    className="border-line size-14 rounded border object-cover"
+                  />
+                ) : (
+                  <span className="border-line bg-paper flex h-14 max-w-40 items-center rounded border px-2 text-[12.5px] [overflow-wrap:anywhere]">
+                    {d.file.name}
+                  </span>
+                )}
                 <button
                   type="button"
-                  aria-label="Remove photo"
+                  aria-label={`Remove ${d.file.name}`}
                   className="bg-ink text-paper absolute -top-2 -right-2 grid size-6 place-items-center rounded-full text-[13px]"
                   onClick={() => setDrafts((x) => x.filter((_, j) => j !== i))}
                 >
@@ -225,7 +241,7 @@ export function Chat({
           {canEdit && (
             <label
               className="border-line bg-paper grid size-11 flex-none cursor-pointer place-items-center rounded border"
-              title="Add photos of invoices, samples or progress"
+              title="Add photos of invoices, samples or progress, or a PDF"
             >
               <svg
                 viewBox="0 0 24 24"
@@ -239,10 +255,10 @@ export function Chat({
                 <path d="M4 7h3l2-3h6l2 3h3v13H4z" />
                 <circle cx="12" cy="13" r="4" />
               </svg>
-              <span className="sr-only">Add photos</span>
+              <span className="sr-only">Add photos or documents</span>
               <input
                 type="file"
-                accept="image/*"
+                accept={DOCUMENT_ACCEPT}
                 multiple
                 hidden
                 disabled={busy}

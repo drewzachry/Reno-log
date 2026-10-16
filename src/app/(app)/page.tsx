@@ -43,7 +43,10 @@ export default async function ChatPage() {
       ? supabase.from("profiles").select("id, display_name").in("id", authorIds)
       : { data: [] },
     fileIds.length
-      ? supabase.from("files").select("id, storage_path, mime_type").in("id", fileIds)
+      ? supabase
+          .from("files")
+          .select("id, storage_path, mime_type, original_name")
+          .in("id", fileIds)
       : { data: [] },
   ]);
   const nameOf = new Map((people.data ?? []).map((p) => [p.id, p.display_name as string]));
@@ -67,6 +70,10 @@ export default async function ChatPage() {
     mine: r.author_id === user.id,
     author: r.author_id && r.author_id !== user.id ? (nameOf.get(r.author_id) ?? null) : null,
     images: (r.file_ids ?? []).map((id) => urlOf.get(id)).filter((u): u is string => !!u),
+    documents: (r.file_ids ?? [])
+      .map((id) => (files.data ?? []).find((f) => f.id === id))
+      .filter((f) => f && !f.mime_type.startsWith("image/"))
+      .map((f) => f!.original_name as string),
     cards: [...(r.proposals ?? [])].sort((a, b) => a.created_at.localeCompare(b.created_at)),
   }));
 

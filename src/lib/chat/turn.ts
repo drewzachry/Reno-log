@@ -5,9 +5,13 @@ import type {
   BetaMessageParam,
   BetaTool,
 } from "@anthropic-ai/sdk/resources/beta/messages/messages";
+import { after } from "next/server";
 import sharp from "sharp";
 import { z } from "zod";
+import { titleFromName } from "@/lib/documents/extract";
+import { kickJobs } from "@/lib/documents/jobs";
 import { userMessage } from "@/lib/errors";
+import { siteOrigin } from "@/lib/origin";
 import { loadRecord } from "@/lib/record/load";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -110,6 +114,7 @@ export async function chatTurn(req: TurnRequest): Promise<TurnResult> {
     .from("usage")
     .select("id", { count: "exact", head: true })
     .eq("user_id", user.id)
+    .eq("purpose", "chat")
     .gte("created_at", since);
   if ((count ?? 0) >= dailyLimit)
     return {
@@ -138,8 +143,25 @@ export async function chatTurn(req: TurnRequest): Promise<TurnResult> {
   });
   if (postError) return { ok: false, error: userMessage(postError) };
 
+  // PDFs and other documents go to the document reader; the chat says when they're read.
+  const startedReading: string[] = [];
+  for (const [i, f] of req.files.entries()) {
+    if (f.mime.startsWith("image/")) continue;
+    const { error } = await supabase.rpc("add_document", {
+      p_project_id: req.projectId,
+      p_file_id: fileIds[i],
+      p_title: titleFromName(f.name),
+    });
+    if (error) return { ok: false, error: userMessage(error), saved: true };
+    startedReading.push(f.name);
+  }
+  if (startedReading.length) {
+    const origin = await siteOrigin();
+    after(() => kickJobs(origin));
+  }
+
   // The briefing: the record, read fresh, under the person's own access.
-  const [record, project, facts, recent] = await Promise.all([
+  const [record, project, facts, recent, docs, excerpts] = await Promise.all([
     loadRecord(supabase, req.projectId),
     supabase.from("projects").select("name").eq("id", req.projectId).single(),
     supabase
@@ -155,12 +177,35 @@ export async function chatTurn(req: TurnRequest): Promise<TurnResult> {
       .neq("id", messageId)
       .order("created_at", { ascending: false })
       .limit(HISTORY),
+    supabase
+      .from("documents")
+      .select("title, kind, summary, status, document_facts(topic, detail, page, sort_order)")
+      .eq("project_id", req.projectId)
+      .is("deleted_at", null)
+      .order("created_at"),
+    req.text.trim()
+      ? supabase.rpc("search_documents", {
+          p_project_id: req.projectId,
+          p_query: req.text,
+          p_limit: 8,
+        })
+      : { data: [] },
   ]);
   const briefing = buildBriefing({
     projectName: project.data?.name ?? "",
     facts: facts.data ?? [],
+    documents: (docs.data ?? []).map((d) => ({
+      title: d.title,
+      kind: d.kind,
+      summary: d.summary,
+      status: d.status,
+      facts: [...(d.document_facts ?? [])].sort((a, b) => a.sort_order - b.sort_order),
+    })),
     ...record,
   });
+  const passages = ((excerpts.data ?? []) as { title: string; page: number | null; text: string }[])
+    .map((e) => `[${e.title}${e.page ? `, p.${e.page}` : ""}]\n${e.text}`)
+    .join("\n\n");
 
   const past = (recent.data ?? []).reverse();
   const authorIds = [...new Set(past.map((m) => m.author_id).filter(Boolean))] as string[];
@@ -208,6 +253,12 @@ export async function chatTurn(req: TurnRequest): Promise<TurnResult> {
       carried +
       `${me ? `${me}: ` : ""}${req.text.trim() || "(sent without a message)"}` +
       (skipped.length ? `\n(Couldn't open: ${skipped.join(", ")})` : "") +
+      (startedReading.length
+        ? `\n(Attached documents, now being read in the background: ${startedReading.join(", ")}. Say you're reading them and will post a summary here when done; don't guess their contents.)`
+        : "") +
+      (passages
+        ? `\n\n<document_excerpts>\nPassages from the project's documents that may answer this. Cite them as (Title, p.N).\n\n${passages}\n</document_excerpts>`
+        : "") +
       (member.role === "viewer"
         ? "\n(This person is a Viewer: answer questions, but don't propose cards; they can't log changes.)"
         : ""),

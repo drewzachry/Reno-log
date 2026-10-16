@@ -16,8 +16,11 @@ export async function today() {
   return todayIn((await cookies()).get(TZ_COOKIE)?.value);
 }
 
-/** Everything the record screens need for one project, read under the caller's RLS. */
-export async function loadRecord(supabase: SupabaseClient, projectId: string) {
+/**
+ * Everything the record screens need for one project, read under the caller's
+ * RLS. Background work, which has no viewer, passes the date to use.
+ */
+export async function loadRecord(supabase: SupabaseClient, projectId: string, on?: string) {
   const [ms, ds, bs, ls, fs] = await Promise.all([
     supabase
       .from("milestones")
@@ -68,7 +71,7 @@ export async function loadRecord(supabase: SupabaseClient, projectId: string) {
     ...f,
     amount_cents: Number(f.amount_cents),
   }));
-  const t = await today();
+  const t = on ?? (await today());
   return {
     today: t,
     milestones,

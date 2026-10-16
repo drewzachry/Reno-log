@@ -67,7 +67,7 @@ test("'GC says drywall moved to Nov 23' proposes a schedule card that moves dead
 test("a photo of an invoice proposes an invoice card; the original is kept", async ({ page }) => {
   await openSample(page, "invoice@example.com");
   await page.getByLabel("Add photos").setInputFiles(await photo("#ffffff"));
-  await expect(page.getByRole("list", { name: "Photos to send" }).locator("img")).toHaveCount(1);
+  await expect(page.getByRole("list", { name: "Files to send" }).locator("img")).toHaveCount(1);
   await say(page, "Here's the plumber's invoice");
 
   const c = card(page, "Invoice");

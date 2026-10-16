@@ -3,7 +3,8 @@ import { NextResponse, type NextRequest } from "next/server";
 import { supabaseEnv } from "@/lib/supabase/env";
 
 /** Pages anyone can open without signing in. */
-const PUBLIC_PATHS = ["/login", "/auth/", "/invite/"];
+// /api/jobs/ runs background work started by the server itself and by Vercel Cron.
+const PUBLIC_PATHS = ["/login", "/auth/", "/invite/", "/api/jobs/"];
 
 /** Refreshes the Supabase session cookie and sends signed-out visitors to /login. */
 export async function middleware(request: NextRequest) {

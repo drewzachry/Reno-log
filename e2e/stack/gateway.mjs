@@ -9,7 +9,7 @@ import http from "node:http";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import pg from "pg";
-import { fakeClaude, lastRequest } from "./fake-claude.mjs";
+import { fakeClaude, lastRequest, toEvents } from "./fake-claude.mjs";
 
 const { DATABASE_URL, JWT_SECRET, PORT = "54321", POSTGREST_PORT = "54322" } = process.env;
 // What the app sends as SUPABASE_SERVICE_ROLE_KEY in tests.
@@ -152,6 +152,12 @@ async function storage(req, res, url) {
     }
     return send(res, 200, out);
   }
+  if (rest.startsWith(`sign/${BUCKET}/`) && req.method === "POST") {
+    const path = rest.slice(`sign/${BUCKET}/`.length);
+    if (!(await storageRole(req, path)))
+      return send(res, 400, { statusCode: "404", error: "not_found", message: "Object not found" });
+    return send(res, 200, { signedURL: `/object/sign/${BUCKET}/${path}?token=${mac(path)}` });
+  }
   if (rest.startsWith(`sign/${BUCKET}/`) && req.method === "GET") {
     const path = rest.slice(`sign/${BUCKET}/`.length);
     const file = join(FILES, path);
@@ -207,7 +213,11 @@ http
       return res.end();
     }
     if (url.pathname === "/v1/messages" && req.method === "POST") {
-      return send(res, 200, fakeClaude(await readBody(req)));
+      const body = await readBody(req);
+      const msg = await fakeClaude(body);
+      if (!body.stream) return send(res, 200, msg);
+      res.writeHead(200, { "content-type": "text/event-stream" });
+      return res.end(toEvents(msg));
     }
     if (url.pathname === "/v1/test/last-request") return send(res, 200, lastRequest ?? {});
     if (url.pathname.startsWith("/storage/v1/object/")) return storage(req, res, url);
