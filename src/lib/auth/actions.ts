@@ -22,15 +22,27 @@ export async function sendCode(_: LoginState, form: FormData): Promise<LoginStat
     };
   }
   const next = safeNext(String(form.get("next") ?? ""));
-  const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithOtp({
-    email: parsed.data,
-    options: {
-      shouldCreateUser: true,
-      emailRedirectTo: `${await siteOrigin()}/auth/callback?next=${encodeURIComponent(next)}`,
-    },
-  });
+  let error: { status?: number; code?: string; message: string } | null;
+  try {
+    const supabase = await createClient();
+    ({ error } = await supabase.auth.signInWithOtp({
+      email: parsed.data,
+      options: {
+        shouldCreateUser: true,
+        emailRedirectTo: `${await siteOrigin()}/auth/callback?next=${encodeURIComponent(next)}`,
+      },
+    }));
+  } catch (e) {
+    console.error("sendCode failed", e);
+    error = { message: "unreachable" };
+  }
   if (error) {
+    // Logged without the email address; shows up in the Vercel function logs.
+    console.error("signInWithOtp error", {
+      status: error.status,
+      code: error.code,
+      message: error.message,
+    });
     const tooMany = error.status === 429 || /rate limit/i.test(error.message);
     return {
       step: "email",
@@ -49,9 +61,20 @@ export async function verifyCode(_: LoginState, form: FormData): Promise<LoginSt
   if (!/^\d{6,10}$/.test(token)) {
     return { step: "code", email, error: "Enter the code from the email. It's all numbers." };
   }
-  const supabase = await createClient();
-  const { error } = await supabase.auth.verifyOtp({ email, token, type: "email" });
+  let error: { status?: number; code?: string; message: string } | null;
+  try {
+    const supabase = await createClient();
+    ({ error } = await supabase.auth.verifyOtp({ email, token, type: "email" }));
+  } catch (e) {
+    console.error("verifyCode failed", e);
+    error = { message: "unreachable" };
+  }
   if (error) {
+    console.error("verifyOtp error", {
+      status: error.status,
+      code: error.code,
+      message: error.message,
+    });
     return {
       step: "code",
       email,
