@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { Brand } from "@/components/Brand";
 import { HeaderMenu } from "@/components/HeaderMenu";
+import { LiveRefresh } from "@/components/LiveRefresh";
 import { TabBar } from "@/components/TabBar";
 import { getSession } from "@/lib/projects";
 
@@ -23,6 +24,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <HeaderMenu projects={projects} currentId={current.id} />
       </header>
       <TabBar />
+      <LiveRefresh projectId={current.id} />
       <main className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-[max(16px,env(safe-area-inset-left))] py-3">
         {children}
       </main>

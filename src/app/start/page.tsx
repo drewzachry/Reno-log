@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { PlainShell } from "@/components/PlainShell";
 import { ui } from "@/components/ui";
 import { chosenName } from "@/lib/names";
+import { LoadSampleButton } from "@/components/record/LoadSampleButton";
 import { getSession } from "@/lib/projects";
 import { StartForm } from "./StartForm";
 
@@ -21,6 +22,13 @@ export default async function StartPage() {
         you’re renovating with.
       </p>
       <StartForm askName={first} name={chosenName(myName, user.email)} />
+      <div className="border-line mt-6 border-t pt-5">
+        <p className="text-muted mb-2 text-sm">
+          Want to look around first? Open a filled-in example: a kitchen and two baths, with
+          decisions, dates and a budget. It’s a separate project you can ignore later.
+        </p>
+        <LoadSampleButton />
+      </div>
       {!first && (
         <Link href="/" className={`${ui.ghost} mt-3 w-full`}>
           Back to {projects[0].name}

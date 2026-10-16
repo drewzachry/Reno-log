@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Archivo, IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
 import { ServiceWorker } from "@/components/ServiceWorker";
+import { TimeZoneCookie } from "@/components/TimeZoneCookie";
 import "./globals.css";
 
 const archivo = Archivo({ variable: "--font-archivo", subsets: ["latin"], axes: ["wdth"] });
@@ -47,6 +48,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       >
         {children}
         <ServiceWorker />
+        <TimeZoneCookie />
       </body>
     </html>
   );

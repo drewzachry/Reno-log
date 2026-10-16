@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { switchProject } from "@/lib/actions/projects";
+import { loadSampleProject } from "@/lib/actions/record";
 import type { ProjectSummary } from "@/lib/projects";
 import { ui } from "./ui";
 
@@ -73,6 +74,11 @@ export function HeaderMenu({
           <Link href="/start" className={item} onClick={() => setOpen(false)}>
             Start a new project
           </Link>
+          {!projects.some((p) => p.name.endsWith("(sample)")) && (
+            <form action={loadSampleProject}>
+              <button className={item}>Explore the sample project</button>
+            </form>
+          )}
           <form action="/auth/signout" method="post">
             <button className={`${item} text-muted`}>Sign out</button>
           </form>
