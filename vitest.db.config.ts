@@ -8,6 +8,8 @@ export default defineConfig({
     environment: "node",
     include: ["supabase/tests/**/*.test.ts"],
     testTimeout: 20_000,
+    // Test files share one Postgres server; run them one at a time.
+    fileParallelism: false,
     hookTimeout: 60_000,
   },
 });

@@ -2,15 +2,18 @@
 -- against plain Postgres in tests. Never apply this to a real Supabase project.
 do $$ begin
   create role anon nologin;
-  exception when duplicate_object then null;
+  -- unique_violation: two test files creating the role at the same moment.
+  exception when duplicate_object or unique_violation then null;
 end $$;
 do $$ begin
   create role authenticated nologin;
-  exception when duplicate_object then null;
+  -- unique_violation: two test files creating the role at the same moment.
+  exception when duplicate_object or unique_violation then null;
 end $$;
 do $$ begin
   create role service_role nologin bypassrls;
-  exception when duplicate_object then null;
+  -- unique_violation: two test files creating the role at the same moment.
+  exception when duplicate_object or unique_violation then null;
 end $$;
 
 create schema auth;
