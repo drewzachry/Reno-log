@@ -70,3 +70,11 @@ export type LedgerEntry = {
   flags: string[];
   change_order_status: "proposed" | "approved" | "rejected" | null;
 };
+
+/** Money set aside for the project: a name and an amount, not a real account. */
+export type FundingSource = {
+  id: string;
+  name: string;
+  amount_cents: number;
+  sort_order: number;
+};

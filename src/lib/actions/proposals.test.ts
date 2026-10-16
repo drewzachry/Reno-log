@@ -19,6 +19,21 @@ describe("proposal validation", () => {
     ).toBe(true);
   });
 
+  it("accepts adding and removing an account", () => {
+    expect(
+      proposalSchema.safeParse({
+        type: "save_funding_source",
+        project_id: id,
+        id: null,
+        name: "Savings",
+        amount_cents: 9000000,
+      }).success,
+    ).toBe(true);
+    expect(
+      proposalSchema.safeParse({ type: "remove_funding_source", project_id: id, id }).success,
+    ).toBe(true);
+  });
+
   it("rejects what a model might make up", () => {
     for (const bad of [
       { type: "update_decision", decision_id: id, status: "done" },
@@ -32,6 +47,8 @@ describe("proposal validation", () => {
         milestone_key: "Rough-in; drop table",
         date: "2026-11-24",
       },
+      { type: "save_funding_source", project_id: id, id: null, name: " ", amount_cents: 100 },
+      { type: "save_funding_source", project_id: id, id: null, name: "Savings", amount_cents: -5 },
       { type: "delete_everything" },
     ]) {
       expect(proposalSchema.safeParse(bad).success, JSON.stringify(bad)).toBe(false);

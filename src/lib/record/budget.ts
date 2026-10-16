@@ -1,4 +1,4 @@
-import { CHOSEN, type Bucket, type Decision, type LedgerEntry } from "./types";
+import { CHOSEN, type Bucket, type Decision, type FundingSource, type LedgerEntry } from "./types";
 
 export type BucketStats = {
   /** Invoices and payments, less credits. */
@@ -57,4 +57,32 @@ export function budgetTotals(buckets: Bucket[], ledger: LedgerEntry[], decisions
     paid,
     cushionLeft: cushion ? bucketStats(cushion, ledger, decisions).left : null,
   };
+}
+
+/**
+ * What the project still needs, in cents: for each budget line, its full
+ * budget (or what's actually used, if that's more) less what's been paid. The
+ * cushion counts in full, as money you may still need.
+ */
+export function stillToPay(
+  buckets: Bucket[],
+  ledger: LedgerEntry[],
+  decisions: Decision[],
+): number {
+  return buckets.reduce((a, b) => {
+    const st = bucketStats(b, ledger, decisions);
+    return a + Math.max(0, Math.max(b.budget_cents, st.used) - st.paid);
+  }, 0);
+}
+
+/** Money set aside, what's still to pay, and the difference. */
+export function bufferSummary(
+  sources: FundingSource[],
+  buckets: Bucket[],
+  ledger: LedgerEntry[],
+  decisions: Decision[],
+) {
+  const funds = sources.reduce((a, s) => a + s.amount_cents, 0);
+  const toPay = stillToPay(buckets, ledger, decisions);
+  return { funds, toPay, buffer: funds - toPay };
 }

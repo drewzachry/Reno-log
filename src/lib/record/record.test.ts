@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { bucketStats, budgetTotals } from "./budget";
+import { bucketStats, budgetTotals, bufferSummary, stillToPay } from "./budget";
 import { addDays, daysBetween, shortDate, todayIn } from "./dates";
 import { decideBy, groupDecisions, withDeadlines } from "./deadlines";
 import { money, parseMoney } from "./money";
@@ -187,6 +187,38 @@ describe("sample project math", () => {
     expect(upNextItems([], [], [], 2)[0].text).toBe(
       "2 updates waiting for you to confirm in the chat",
     );
+  });
+});
+
+describe("buffer", () => {
+  it("sample: $290,000 set aside − $273,050 still to pay = $16,950", () => {
+    const b = bufferSummary(s.sources, s.buckets, s.ledger, s.decisions);
+    expect([money(b.funds), money(b.toPay), money(b.buffer)]).toEqual([
+      "$290,000",
+      "$273,050",
+      "$16,950",
+    ]);
+  });
+
+  it("counts an over-budget allowance at what's actually used", () => {
+    // Tile: $9,250 chosen against an $8,000 budget, $1,950 paid → $7,300 still to pay.
+    expect(stillToPay([bucket("tile")], s.ledger, s.decisions)).toBe(730000);
+  });
+
+  it("never counts a fully paid line as negative", () => {
+    const paidOff = [{ ...s.ledger[0], id: "x", amount_cents: 99_000_000 }];
+    expect(stillToPay([bucket("contract")], paidOff, [])).toBe(0);
+  });
+
+  it("goes negative when funds fall short, and Up next says so", () => {
+    const b = bufferSummary([s.sources[0]], s.buckets, s.ledger, s.decisions);
+    expect(money(b.buffer)).toBe("−$183,050");
+    const items = upNextItems(ds, s.buckets, s.ledger, 0, b.buffer);
+    expect(items[0].text).toBe("Money set aside is $183,050 short of what's still to pay");
+  });
+
+  it("has nothing to say with no accounts", () => {
+    expect(bufferSummary([], [], [], []).buffer).toBe(0);
   });
 });
 

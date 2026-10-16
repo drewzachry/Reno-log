@@ -22,6 +22,8 @@ export function upNextItems(
   buckets: Bucket[],
   ledger: LedgerEntry[],
   pendingCards = 0,
+  /** Money set aside minus still to pay; only shown when negative. */
+  buffer: number | null = null,
 ): UpNextItem[] {
   const items: UpNextItem[] = [];
   for (const d of decisions) {
@@ -56,6 +58,15 @@ export function upNextItems(
         href: "/budget",
       });
     }
+  }
+  if (buffer != null && buffer < 0) {
+    items.push({
+      n: -999.5, // after cards to confirm, before buckets over budget
+      text: `Money set aside is ${money(-buffer)} short of what's still to pay`,
+      severity: "bad",
+      when: "Now",
+      href: "/budget",
+    });
   }
   if (pendingCards) {
     items.push({

@@ -1,7 +1,7 @@
 // The sample project from supabase/migrations/*_record.sql, mirrored for unit
 // tests. If you change one, change the other (and docs/SAMPLE_PROJECT.md).
 import { addDays } from "./dates";
-import type { Bucket, Decision, LedgerEntry, Milestone, Status } from "./types";
+import type { Bucket, Decision, FundingSource, LedgerEntry, Milestone, Status } from "./types";
 
 export function sampleProject(today: string) {
   const milestones: Milestone[] = [
@@ -137,5 +137,10 @@ export function sampleProject(today: string) {
     change_order_status: co as LedgerEntry["change_order_status"],
   }));
 
-  return { milestones, buckets, decisions, ledger };
+  const sources: FundingSource[] = [
+    { id: "f1", name: "Savings", amount_cents: 9000000, sort_order: 1 },
+    { id: "f2", name: "Home equity line of credit", amount_cents: 20000000, sort_order: 2 },
+  ];
+
+  return { milestones, buckets, decisions, ledger, sources };
 }

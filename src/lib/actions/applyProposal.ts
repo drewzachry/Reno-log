@@ -45,6 +45,24 @@ export async function applyProposal(input: unknown): Promise<ApplyResult> {
     return error ? { ok: false, error: userMessage(error) } : { ok: true };
   }
 
+  if (p.type === "save_funding_source") {
+    const { error } = await supabase.rpc("save_funding_source", {
+      p_project_id: p.project_id,
+      p_id: p.id,
+      p_name: p.name,
+      p_amount_cents: p.amount_cents,
+    });
+    return error ? { ok: false, error: userMessage(error) } : { ok: true };
+  }
+
+  if (p.type === "remove_funding_source") {
+    const { error } = await supabase.rpc("remove_funding_source", {
+      p_project_id: p.project_id,
+      p_id: p.id,
+    });
+    return error ? { ok: false, error: userMessage(error) } : { ok: true };
+  }
+
   const { data, error } = await supabase.rpc("move_milestone", {
     p_project_id: p.project_id,
     p_key: p.milestone_key,

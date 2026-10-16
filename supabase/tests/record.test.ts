@@ -250,3 +250,88 @@ describe("direct writes", () => {
     }
   });
 });
+
+describe("funding sources", () => {
+  const sources = (project: string) =>
+    all(
+      owner,
+      "select name, amount_cents::bigint as amount from public.funding_sources where project_id = $1 and deleted_at is null order by sort_order",
+      [project],
+    );
+
+  it("the sample project has two accounts totalling $290,000", async () => {
+    expect(await sources(sample)).toEqual([
+      { name: "Savings", amount: "9000000" },
+      { name: "Home equity line of credit", amount: "20000000" },
+    ]);
+  });
+
+  it("adds, changes and removes accounts, logging each with before and after", async () => {
+    const id = (
+      await one<{ id: string }>(
+        owner,
+        "select public.save_funding_source($1, null, ' Gift from parents ', 2500000) as id",
+        [sample],
+      )
+    ).id;
+    expect((await events(sample)).at(-1)).toMatchObject({
+      type: "budget",
+      summary: "Added Gift from parents: $25,000 for the project",
+      after: { name: "Gift from parents", amount_cents: 2500000 },
+    });
+
+    await as(db, owner, (q) =>
+      q("select public.save_funding_source($1, $2, 'Gift from parents', 3000000)", [sample, id]),
+    );
+    expect((await events(sample)).at(-1)).toMatchObject({
+      summary: "Gift from parents changed from $25,000 to $30,000",
+      before: { amount_cents: 2500000 },
+      after: { amount_cents: 3000000 },
+    });
+
+    const count = (await events(sample)).length;
+    await as(db, owner, (q) =>
+      q("select public.save_funding_source($1, $2, 'Gift from parents', 3000000)", [sample, id]),
+    );
+    expect(await events(sample)).toHaveLength(count);
+
+    await as(db, owner, (q) => q("select public.remove_funding_source($1, $2)", [sample, id]));
+    expect((await events(sample)).at(-1)).toMatchObject({
+      summary: "Removed Gift from parents ($30,000)",
+    });
+    expect(await sources(sample)).toHaveLength(2);
+    // Soft delete: the row is still there.
+    expect(
+      await all(owner, "select 1 from public.funding_sources where id = $1", [id]),
+    ).toHaveLength(1);
+  });
+
+  it("refuses viewers, bad input and other projects' accounts", async () => {
+    await expect(
+      as(db, viewer, (q) =>
+        q("select public.save_funding_source($1, null, 'Savings', 100)", [sample]),
+      ),
+    ).rejects.toThrow(/Only the owner or an editor/);
+    await expect(
+      as(db, owner, (q) => q("select public.save_funding_source($1, null, '  ', 100)", [sample])),
+    ).rejects.toThrow(/Give the account a name/);
+    await expect(
+      as(db, owner, (q) => q("select public.save_funding_source($1, null, 'X', -1)", [sample])),
+    ).rejects.toThrow(/zero or more/);
+    const other = (await one<{ id: string }>(owner, "select public.load_sample_project() as id"))
+      .id;
+    const foreign = await one<{ id: string }>(
+      owner,
+      "select id from public.funding_sources where project_id = $1 limit 1",
+      [other],
+    );
+    await expect(
+      as(db, owner, (q) =>
+        q("select public.save_funding_source($1, $2, 'X', 1)", [sample, foreign.id]),
+      ),
+    ).rejects.toThrow(/isn't on this project/);
+    await expect(
+      as(db, owner, (q) => q("delete from public.funding_sources where project_id = $1", [sample])),
+    ).rejects.toThrow(/permission denied/);
+  });
+});

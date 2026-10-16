@@ -3,7 +3,8 @@
 Loaded from **Menu → Load the sample project** (or the start screen). It's built from the
 decision library in `AI_BEHAVIOR.md`: a kitchen, a primary bath and a hall bath, plus
 whole-house items. Defined in `supabase/migrations/20261017000000_record.sql`
-(`load_sample_project`), mirrored in `src/lib/record/sample.fixture.ts` for tests. Change
+(`load_sample_project`), mirrored in `src/lib/record/sample.fixture.ts` for tests; the accounts were added in
+`20261018000000_funding_sources.sql`, which replaces the function. Change
 both together, and this page.
 
 Dates are relative to the day it's loaded ("T"), so Up next always has something in it.
@@ -46,7 +47,19 @@ History records it as one event with the old and new date.
 | Appliances | You buy directly | $14,000 | $4,000 paid | $10,000 |
 | Cushion | Cushion | $28,500 | $2,400 approved change order | $26,100 |
 
-**Totals:** $349,000 budget, $77,200 paid so far, $26,100 cushion left.
+**Totals:** $349,000 budget, $77,200 paid so far, $26,100 cushion left, $16,950 buffer.
+
+## Money for the project
+
+| Account | Amount |
+|---|---|
+| Savings | $90,000 |
+| Home equity line of credit | $200,000 |
+
+**Buffer:** $290,000 set aside − $273,050 still to pay = **$16,950**.
+
+Still to pay, by line: contract $213,750, tile $7,300 ($9,250 chosen − $1,950 paid),
+plumbing $9,500, lighting $4,000, appliances $10,000, cushion $28,500.
 
 Ledger: two Bayside Builders invoices ($28,500 deposit, $42,750 progress payment), a $4,000
 appliance deposit, a $1,950 tile deposit, an approved $2,400 change order (move the kitchen
@@ -67,6 +80,10 @@ Then "Place the order: Kitchen sink and faucet", decided but not ordered past it
 - **Decide by** = the decision's own due date if set, otherwise milestone date − lead weeks.
 - **Allowances** count chosen items (Decided or further) as soon as they're picked: used is
   the larger of money out and chosen cost. Other buckets count money out only.
+- **Still to pay** = for each budget line, its full budget (or what's actually used, if
+  that's more) minus what's been paid. The cushion counts in full, so the buffer is cautious.
+- **Buffer** = money set aside (accounts the owner types in; not linked to a bank) − still to
+  pay. When it's negative, Up next says how much is missing.
 - **Money out** = invoices + payments − credits, plus approved change orders. Proposed and
   rejected change orders don't count. (Assumption: invoices and payments are separate costs,
   not an invoice and the payment of that same invoice.)

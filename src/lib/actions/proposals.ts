@@ -25,6 +25,18 @@ export const proposalSchema = z.discriminatedUnion("type", [
     reason: z.string().trim().max(1000).optional(),
   }),
   z.object({
+    type: z.literal("save_funding_source"),
+    project_id: z.uuid(),
+    id: z.uuid().nullable(),
+    name: z.string().trim().min(1).max(80),
+    amount_cents: z.number().int().min(0).max(1e11),
+  }),
+  z.object({
+    type: z.literal("remove_funding_source"),
+    project_id: z.uuid(),
+    id: z.uuid(),
+  }),
+  z.object({
     type: z.literal("move_milestone"),
     project_id: z.uuid(),
     milestone_key: z.string().regex(/^[a-z_]{1,40}$/),

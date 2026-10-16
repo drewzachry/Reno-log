@@ -64,3 +64,32 @@ export async function loadSampleProject() {
   await selectProject(data as string);
   redirect("/decisions");
 }
+
+export type FundingState = { error?: string; saved?: number };
+
+/** Adds an account (no id) or changes one. */
+export async function saveFunding(_: FundingState, form: FormData): Promise<FundingState> {
+  const { current } = await getSession();
+  if (!current) return { error: "Please sign in first." };
+  const amount = parseMoney(String(form.get("amount") ?? ""));
+  if (amount == null) return { error: "Enter the amount as a number, like 90,000." };
+  const name = String(form.get("name") ?? "").trim();
+  if (!name) return { error: "Give the account a name, like Savings." };
+  const r = await applyProposal({
+    type: "save_funding_source",
+    project_id: current.id,
+    id: String(form.get("id") ?? "") || null,
+    name,
+    amount_cents: amount,
+  });
+  refresh();
+  return r.ok ? { saved: Date.now() } : { error: r.error };
+}
+
+export async function removeFunding(id: string): Promise<ApplyResult> {
+  const { current } = await getSession();
+  if (!current) return { ok: false, error: "Please sign in first." };
+  const r = await applyProposal({ type: "remove_funding_source", project_id: current.id, id });
+  refresh();
+  return r;
+}

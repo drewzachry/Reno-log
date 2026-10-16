@@ -3,7 +3,7 @@ import { cookies } from "next/headers";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { todayIn } from "./dates";
 import { withDeadlines } from "./deadlines";
-import type { Bucket, Decision, LedgerEntry, Milestone } from "./types";
+import type { Bucket, Decision, FundingSource, LedgerEntry, Milestone } from "./types";
 
 export const TZ_COOKIE = "tz";
 
@@ -18,7 +18,7 @@ export async function today() {
 
 /** Everything the record screens need for one project, read under the caller's RLS. */
 export async function loadRecord(supabase: SupabaseClient, projectId: string) {
-  const [ms, ds, bs, ls] = await Promise.all([
+  const [ms, ds, bs, ls, fs] = await Promise.all([
     supabase
       .from("milestones")
       .select("id, key, label, explanation, date, sort_order")
@@ -45,6 +45,12 @@ export async function loadRecord(supabase: SupabaseClient, projectId: string) {
       .eq("project_id", projectId)
       .is("deleted_at", null)
       .order("date", { ascending: false }),
+    supabase
+      .from("funding_sources")
+      .select("id, name, amount_cents, sort_order")
+      .eq("project_id", projectId)
+      .is("deleted_at", null)
+      .order("sort_order"),
   ]);
 
   // bigint columns arrive as numbers below 2^53, which covers any renovation.
@@ -58,12 +64,17 @@ export async function loadRecord(supabase: SupabaseClient, projectId: string) {
     ...l,
     amount_cents: Number(l.amount_cents),
   }));
+  const sources = ((fs.data ?? []) as FundingSource[]).map((f) => ({
+    ...f,
+    amount_cents: Number(f.amount_cents),
+  }));
   const t = await today();
   return {
     today: t,
     milestones,
     buckets,
     ledger,
+    sources,
     decisions: withDeadlines(
       decisions.map((d) => ({
         ...d,
