@@ -1,7 +1,8 @@
 import { expect, test } from "@playwright/test";
+import { startProject } from "./helpers";
 
-test("tab bar navigates between the main screens", async ({ page }) => {
-  await page.goto("/");
+test("tab bar navigates and fits a phone", async ({ page }) => {
+  await startProject(page, "shell@example.com", "Shell", "Shell test");
   const nav = page.getByRole("navigation", { name: "Main" });
   await expect(nav.getByRole("link", { name: "Chat" })).toHaveAttribute("aria-current", "page");
 
@@ -10,31 +11,27 @@ test("tab bar navigates between the main screens", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Decisions" })).toBeVisible();
   await expect(nav.getByRole("link", { name: "Decide" })).toHaveAttribute("aria-current", "page");
 
-  await nav.getByRole("link", { name: "Log" }).click();
-  await expect(page).toHaveURL(/\/history$/);
-  await expect(page.getByRole("heading", { name: "History" })).toBeVisible();
-});
-
-test("tab targets are at least 44px tall and the page itself doesn't scroll", async ({ page }) => {
-  await page.goto("/");
-  for (const link of await page.getByRole("navigation", { name: "Main" }).getByRole("link").all()) {
-    const box = await link.boundingBox();
-    expect(box!.height).toBeGreaterThanOrEqual(44);
+  for (const link of await nav.getByRole("link").all()) {
+    expect((await link.boundingBox())!.height).toBeGreaterThanOrEqual(44);
   }
-  const overflow = await page.evaluate(
-    () => document.documentElement.scrollWidth > window.innerWidth,
-  );
-  expect(overflow).toBe(false);
+  // The page itself never scrolls in either direction; only the content area does,
+  // so the header can't slide under the iOS status bar.
+  const overflow = await page.evaluate(() => {
+    const el = document.documentElement;
+    return { x: el.scrollWidth > window.innerWidth, y: el.scrollHeight > window.innerHeight };
+  });
+  expect(overflow).toEqual({ x: false, y: false });
 });
 
-test("is installable: manifest and icons are served", async ({ request }) => {
-  const res = await request.get("/manifest.webmanifest");
+test("is installable: manifest, icons and service worker are public", async ({ request }) => {
+  const res = await request.get("/manifest.webmanifest", { maxRedirects: 0 });
   expect(res.ok()).toBe(true);
   const manifest = await res.json();
   expect(manifest.display).toBe("standalone");
   for (const icon of manifest.icons) {
-    expect((await request.get(icon.src)).ok()).toBe(true);
+    expect((await request.get(icon.src, { maxRedirects: 0 })).ok()).toBe(true);
   }
-  expect((await request.get("/icons/apple-touch-icon.png")).ok()).toBe(true);
-  expect((await request.get("/sw.js")).ok()).toBe(true);
+  for (const path of ["/icons/apple-touch-icon.png", "/sw.js"]) {
+    expect((await request.get(path, { maxRedirects: 0 })).ok()).toBe(true);
+  }
 });

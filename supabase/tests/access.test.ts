@@ -236,12 +236,44 @@ describe("roles", () => {
     });
   });
 
-  it("members only see profiles of people they share a project with", async () => {
+  it("members see profiles of people on, or in the history of, their projects", async () => {
     const names = await as(db, kate, async (q) =>
       (await q("select display_name from public.profiles order by display_name")).rows.map(
         (r) => r.display_name,
       ),
     );
-    expect(names).toEqual(["Drew", "Kate"]);
+    // Val and "someone" left, but they're in the history so their names stay readable.
+    expect(names).toEqual(["Drew", "Kate", "Val", "someone"]);
+  });
+});
+
+describe("names", () => {
+  it("lets you set your own name, and only your own", async () => {
+    await as(db, kate, (q) => q("select public.set_my_name('  Kate Rivera ')"));
+    const { rows } = await db.query("select display_name from public.profiles where id = $1", [
+      kate,
+    ]);
+    expect(rows[0].display_name).toBe("Kate Rivera");
+    await expect(as(db, kate, (q) => q("select public.set_my_name('   ')"))).rejects.toThrow(
+      /1 to 80/,
+    );
+  });
+
+  it("keeps showing names in history after someone leaves", async () => {
+    const names = await as(db, drew, async (q) =>
+      (await q("select display_name from public.profiles order by display_name")).rows.map(
+        (r) => r.display_name,
+      ),
+    );
+    // Val was removed earlier but joined, so stays visible; the stranger who
+    // joined and left also appears in history. Someone never on the project doesn't.
+    expect(names).toContain("Val");
+    const outsider = await createUser(db, "outsider@example.com", "Outsider");
+    const seen = await as(
+      db,
+      drew,
+      async (q) => (await q("select 1 from public.profiles where id = $1", [outsider])).rows.length,
+    );
+    expect(seen).toBe(0);
   });
 });
