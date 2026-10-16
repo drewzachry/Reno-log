@@ -243,7 +243,8 @@ describe("roles", () => {
       ),
     );
     // Val and "someone" left, but they're in the history so their names stay readable.
-    expect(names).toEqual(["Drew", "Kate", "Val", "someone"]);
+    // Sorted here because database collations order "someone" and "Val" differently.
+    expect(names.sort()).toEqual(["Drew", "Kate", "Val", "someone"]);
   });
 });
 
