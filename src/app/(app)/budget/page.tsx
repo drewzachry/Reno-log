@@ -181,12 +181,24 @@ export default async function BudgetPage() {
                 </span>
                 {l.change_order_status === "proposed" && <Pill tone="warn">Not approved yet</Pill>}
                 {l.change_order_status === "rejected" && <Pill>Rejected</Pill>}
-                {l.flags.map((f) => (
-                  <Pill key={f} tone="warn">
-                    {f}
-                  </Pill>
-                ))}
+                {l.flags.length === 1 && l.flags[0].length <= 40 && (
+                  <Pill tone="warn">{l.flags[0]}</Pill>
+                )}
               </span>
+              {(l.flags.length > 1 || (l.flags[0]?.length ?? 0) > 40) && (
+                <details className="col-span-2 mt-1">
+                  <summary className="text-warn min-h-8 cursor-pointer text-[13px] font-semibold">
+                    {l.flags.length === 1
+                      ? "1 thing to check"
+                      : `${l.flags.length} things to check`}
+                  </summary>
+                  <ul className="mt-1 grid list-disc gap-1 pl-5 text-[13px]">
+                    {l.flags.map((f) => (
+                      <li key={f}>{f}</li>
+                    ))}
+                  </ul>
+                </details>
+              )}
             </li>
           ))}
         </ul>

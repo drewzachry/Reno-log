@@ -53,7 +53,7 @@ export const TOOLS = [
         type: "array",
         items: { type: "string" },
         description:
-          "Short warnings for the homeowner, e.g. 'Possible duplicate of the Oct 3 invoice', 'Looks like work outside the contract: was a change order agreed?'. Empty if none.",
+          "Short tags of a few words each (under 40 characters), e.g. 'Possible duplicate', 'Work not in contract?', 'Large deposit'. At most 3. Explain them in your reply, not here. Empty if none.",
       },
     },
   ),

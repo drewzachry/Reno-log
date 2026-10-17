@@ -127,8 +127,8 @@ export function Chat({
   const busy = sending != null;
 
   return (
-    <section aria-label="Chat" className="grid gap-3">
-      <div className="flex flex-col gap-3" aria-live="polite">
+    <section aria-label="Chat" className="flex flex-1 flex-col gap-3">
+      <div className="flex flex-1 flex-col gap-3" aria-live="polite">
         {!messages.length && <Bubble role="assistant">{canEdit ? WELCOME : WELCOME_VIEWER}</Bubble>}
         {shown.length < messages.length && (
           <button
@@ -224,12 +224,12 @@ export function Chat({
           </ul>
         )}
         {suggestions.length > 0 && !busy && (
-          <div className="-mx-1 flex [scrollbar-width:none] gap-1.5 overflow-x-auto px-1 pb-0.5 md:flex-wrap">
+          <div className="flex flex-wrap gap-1.5">
             {suggestions.map((s) => (
               <button
                 key={s}
                 type="button"
-                className="border-line bg-paper hover:border-accent min-h-9 flex-none rounded-full border px-3 text-[13.5px]"
+                className="border-line bg-paper hover:border-accent min-h-9 rounded-full border px-3 text-left text-[13.5px]"
                 onClick={() => void send(s)}
               >
                 {s}
@@ -275,9 +275,7 @@ export function Chat({
             rows={1}
             value={text}
             maxLength={4000}
-            placeholder={
-              canEdit ? "Tell me what happened, or add an invoice photo…" : "Ask about the project…"
-            }
+            placeholder={canEdit ? "Tell me what happened…" : "Ask about the project…"}
             className="border-line bg-paper placeholder:text-muted/70 [field-sizing:content] max-h-36 min-h-11 min-w-0 flex-1 resize-none rounded border px-3 py-2 text-base"
             onChange={(e) => setText(e.target.value)}
             onKeyDown={(e) => {

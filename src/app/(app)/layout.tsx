@@ -26,7 +26,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <TabBar />
       <LiveRefresh projectId={current.id} />
       <main className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-[max(16px,env(safe-area-inset-left))] py-3">
-        <div className="mx-auto max-w-2xl md:mx-0">{children}</div>
+        {/* Fills the screen's height, so the chat can keep its message box at the bottom. */}
+        <div className="mx-auto flex min-h-full max-w-2xl flex-col md:mx-0">{children}</div>
       </main>
     </div>
   );

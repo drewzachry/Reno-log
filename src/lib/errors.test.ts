@@ -1,5 +1,8 @@
+// @vitest-environment node
+import { readdirSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { GENERIC_ERROR, NEEDS_DATABASE_UPDATE, userMessage } from "./errors";
+import { GENERIC_ERROR, LATEST_MIGRATION, NEEDS_DATABASE_UPDATE, userMessage } from "./errors";
 
 describe("userMessage", () => {
   it("passes through the database's plain-English messages", () => {
@@ -14,6 +17,14 @@ describe("userMessage", () => {
         userMessage({ code, message: "Could not find the function public.save_funding_source" }),
       ).toBe(NEEDS_DATABASE_UPDATE);
     }
+  });
+
+  it("names the newest migration file", () => {
+    const files = readdirSync(join(__dirname, "../../supabase/migrations"))
+      .filter((f) => f.endsWith(".sql"))
+      .sort();
+    expect(LATEST_MIGRATION).toBe(files.at(-1));
+    expect(NEEDS_DATABASE_UPDATE).toContain(LATEST_MIGRATION);
   });
 
   it("hides anything else", () => {

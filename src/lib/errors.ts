@@ -14,8 +14,9 @@ const USER_FACING_CODES = new Set(["42501", "22023", "23505", "P0002", "28000"])
 const MISSING_MIGRATION_CODES = new Set(["PGRST202", "PGRST205", "42883", "42P01"]);
 
 export const GENERIC_ERROR = "Something went wrong. Please try again.";
-export const NEEDS_DATABASE_UPDATE =
-  "This part of the app needs a database update. Run the newest SQL file in Supabase, then try again.";
+/** The newest file in supabase/migrations; a test keeps this in step. */
+export const LATEST_MIGRATION = "20261020000000_documents.sql";
+export const NEEDS_DATABASE_UPDATE = `This part of the app needs a database update. In Supabase's SQL Editor, run supabase/migrations/${LATEST_MIGRATION} (and any earlier ones you haven't run yet), then try again.`;
 
 export function userMessage(error: { code?: string; message?: string } | null | undefined): string {
   if (error?.code && USER_FACING_CODES.has(error.code) && error.message) return error.message;

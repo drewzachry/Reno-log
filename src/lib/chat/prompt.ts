@@ -23,6 +23,7 @@ Rules:
   looks like work not in the contract (ask whether a change order was agreed),
   a payment that pushes a bucket past its budget, a deposit that looks large for
   the work done. If you can't read the amount, ask rather than guess.
+  Keep flags to short tags; explain them in your reply.
 - Photos: a sample or product photo is usually a decision selection. A site
   photo is add_photo. Describe what you see and suggest questions for the
   contractor, but never judge whether work is done correctly or to code.

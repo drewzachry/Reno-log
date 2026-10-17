@@ -83,7 +83,7 @@ export default async function ChatPage() {
   suggestions.push("What happens at rough-in?");
 
   return (
-    <div className="grid gap-3">
+    <div className="flex flex-1 flex-col gap-3">
       <UpNext items={upNextItems(decisions, buckets, ledger, 0, buffer)} />
       <Chat
         projectId={current.id}

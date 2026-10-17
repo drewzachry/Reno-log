@@ -75,7 +75,7 @@ export function Pill({
   };
   return (
     <span
-      className={`inline-flex items-center rounded-full px-2 py-0.5 text-[12px] font-semibold whitespace-nowrap ${tones[tone]}`}
+      className={`inline-flex max-w-full items-center rounded-xl px-2 py-0.5 text-[12px] font-semibold [overflow-wrap:anywhere] ${tones[tone]}`}
     >
       {children}
     </span>
