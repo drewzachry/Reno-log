@@ -33,9 +33,12 @@ export async function middleware(request: NextRequest) {
     },
   });
 
+  // getClaims checks the sign-in token's signature on this server when the
+  // project uses Supabase's asymmetric signing keys, instead of asking
+  // Supabase Auth on every request (it falls back to asking when it must).
   let user = null;
   try {
-    user = (await supabase.auth.getUser()).data.user;
+    user = (await supabase.auth.getClaims()).data?.claims?.sub ?? null;
   } catch {
     // Supabase unreachable: treat as signed out rather than crashing every page.
   }

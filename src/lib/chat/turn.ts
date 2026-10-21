@@ -14,7 +14,7 @@ import { userMessage } from "@/lib/errors";
 import { siteOrigin } from "@/lib/origin";
 import { loadRecord } from "@/lib/record/load";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, verifiedUser } from "@/lib/supabase/server";
 import { buildBriefing } from "./briefing";
 import { buildCard, type Card } from "./cards";
 import { SYSTEM_PROMPT } from "./prompt";
@@ -88,9 +88,7 @@ function apiErrorMessage(e: unknown) {
 export async function chatTurn(req: TurnRequest): Promise<TurnResult> {
   const { model, effort, dailyLimit } = settings();
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await verifiedUser(supabase);
   if (!user) return { ok: false, error: "Please sign in again." };
   const admin = createAdminClient();
   if (!admin || !process.env.ANTHROPIC_API_KEY)

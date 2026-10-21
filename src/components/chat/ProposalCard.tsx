@@ -26,12 +26,16 @@ export function ProposalCard({ card, canEdit }: { card: CardData; canEdit: boole
   const [error, setError] = useState<string | null>(null);
   const shown = card.state !== "pending" ? card.state : state;
 
+  // The card shows the outcome at once; if the server says no, it goes back.
   function act(kind: "confirm" | "dismiss") {
     setError(null);
+    setState(kind === "confirm" ? "confirmed" : "dismissed");
     start(async () => {
       const r = await (kind === "confirm" ? confirmCard : dismissCard)(card.id);
-      if (r.ok) setState(kind === "confirm" ? "confirmed" : "dismissed");
-      else setError(r.error);
+      if (!r.ok) {
+        setState("pending");
+        setError(r.error);
+      }
     });
   }
 

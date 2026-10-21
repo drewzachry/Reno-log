@@ -21,9 +21,22 @@ export async function createClient() {
   });
 }
 
-/** The signed-in user, verified with Supabase Auth, or null. */
+export type SessionUser = { id: string; email: string | undefined };
+
+/**
+ * The signed-in user from their verified sign-in token, or null. The token's
+ * signature is checked locally when Supabase uses asymmetric signing keys,
+ * which saves a round trip to Supabase Auth on every page.
+ */
+export async function verifiedUser(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+): Promise<SessionUser | null> {
+  const { data } = await supabase.auth.getClaims();
+  const c = data?.claims;
+  return c?.sub ? { id: c.sub, email: typeof c.email === "string" ? c.email : undefined } : null;
+}
+
+/** The signed-in user, or null. */
 export async function getUser() {
-  const supabase = await createClient();
-  const { data } = await supabase.auth.getUser();
-  return data.user;
+  return verifiedUser(await createClient());
 }

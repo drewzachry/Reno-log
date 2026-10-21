@@ -2,7 +2,7 @@ import "server-only";
 import { cache } from "react";
 import { cookies } from "next/headers";
 import type { Role } from "@/lib/roles";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, verifiedUser } from "@/lib/supabase/server";
 
 export const PROJECT_COOKIE = "reno_project";
 
@@ -17,8 +17,7 @@ type MembershipRow = { role: Role; project: { id: string; name: string } | null 
  */
 export const getSession = cache(async () => {
   const supabase = await createClient();
-  const { data: auth } = await supabase.auth.getUser();
-  const user = auth.user;
+  const user = await verifiedUser(supabase);
   if (!user) return { supabase, user: null, myName: null, projects: [], current: null } as const;
 
   const [{ data }, { data: me }] = await Promise.all([
