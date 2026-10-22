@@ -13,9 +13,7 @@ export function heavySettings() {
   return {
     model: process.env.DOCS_MODEL || "claude-opus-5-5",
     effort: (["low", "medium", "high"].includes(effort ?? "") ? effort : "medium") as
-      | "low"
-      | "medium"
-      | "high",
+      "low" | "medium" | "high",
   };
 }
 

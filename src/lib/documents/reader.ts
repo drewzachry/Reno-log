@@ -20,13 +20,7 @@ import {
   unzip,
 } from "./extract";
 import { FINISH_PROMPT, READ_PROMPT } from "./prompts";
-import {
-  BATCH_SCHEMA,
-  batchResult,
-  FINISH_SCHEMA,
-  finishResult,
-  type Fact,
-} from "./schemas";
+import { BATCH_SCHEMA, batchResult, FINISH_SCHEMA, finishResult, type Fact } from "./schemas";
 
 const BUCKET = "project-files";
 const BATCH_PAGES = 20;

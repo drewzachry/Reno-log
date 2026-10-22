@@ -57,10 +57,117 @@ const topicOf = (t) =>
           ? "Fixtures & finishes"
           : "Other";
 
+const addDays = (iso, n) => {
+  const d = new Date(`${iso}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+};
+const dollarsToCents = (t) => Math.round(Number(t.replace(/[$,]/g, "")) * 100);
+
+/** Project setup: a plan from the answers, documents and library it's given. */
+function fakeSetup(note) {
+  const get = (label) => note.match(new RegExp(`^${label}: (.*)$`, "m"))?.[1] ?? "";
+  const scope = get("What they're renovating");
+  const start = get("Construction start");
+  const moveIn = /^\d{4}-/.test(get("Target move-in"))
+    ? get("Target move-in")
+    : addDays(start, 170);
+  const contract = get("Contract price").match(/\$[\d,]+/)?.[0];
+  const cushion = get("Cushion set aside").match(/\$[\d,]+/)?.[0];
+  const allowances = [...get("Allowances").matchAll(/([A-Za-z][A-Za-z ]*?) \$([\d,]+)/g)].map(
+    (m) => ({
+      name: m[1].trim(),
+      cents: dollarsToCents(m[2]),
+    }),
+  );
+  const lib = (note.match(/<decision_library[^>]*>\n([\s\S]*?)\n<\/decision_library>/)?.[1] ?? "")
+    .split("\n")
+    .map((l) => l.split(" | "));
+  const baths = [...scope.matchAll(/\b(primary|hall|guest|kids) bath/gi)].map(
+    (m) => `${m[1][0].toUpperCase()}${m[1].slice(1).toLowerCase()} bath`,
+  );
+  const rooms = {
+    bath: baths,
+    kitchen: /kitchen/i.test(scope) ? ["Kitchen"] : [],
+    whole: ["Whole house"],
+  };
+  const docs = note.match(/<documents>\n([\s\S]*?)\n<\/documents>/)?.[1] ?? "";
+  const docTitle = (at) =>
+    docs
+      .slice(0, at)
+      .match(/### (.*?) \(/g)
+      ?.at(-1)
+      ?.slice(4, -2) ?? "Document";
+  const picks = [...docs.matchAll(/Selected: (.*?) = (.*?)\.(?: \(p\.(\d+)\))?$/gm)].map((m) => ({
+    title: m[1],
+    selection: m[2],
+    source: `${docTitle(m.index)} p.${m[3]}`,
+  }));
+  const buckets = [];
+  if (contract)
+    buckets.push({
+      key: "contract",
+      name: "Construction contract",
+      kind: "contract",
+      budget_cents: dollarsToCents(contract),
+    });
+  for (const a of allowances)
+    buckets.push({
+      key: a.name.toLowerCase().split(" ")[0],
+      name: `${a.name[0].toUpperCase()}${a.name.slice(1)} allowance`,
+      kind: "allowance",
+      budget_cents: a.cents,
+    });
+  if (contract || cushion)
+    buckets.push({
+      key: "cushion",
+      name: "Cushion",
+      kind: "contingency",
+      budget_cents: cushion ? dollarsToCents(cushion) : Math.round(dollarsToCents(contract) / 10),
+    });
+  const decisions = [];
+  for (const [category, title, area, stage, lead, why] of lib) {
+    for (const room of rooms[area] ?? []) {
+      if (area === "whole" && decisions.filter((d) => d.room === "Whole house").length >= 6)
+        continue;
+      const pick = picks.find((p) => p.title === title);
+      const bucket = buckets.find(
+        (b) => b.kind === "allowance" && category.toLowerCase().includes(b.key),
+      );
+      decisions.push({
+        title,
+        room,
+        category,
+        milestone_key: stage,
+        lead_weeks: Number(lead),
+        why,
+        bucket_key: bucket?.key ?? null,
+        status: pick ? "decided" : "not_started",
+        selection: pick?.selection ?? null,
+        source: pick?.source ?? null,
+      });
+    }
+  }
+  return {
+    scope,
+    milestones: {
+      rough_in: addDays(start, 28),
+      drywall: addDays(start, 56),
+      cabinets: addDays(start, 84),
+      countertops: addDays(start, 105),
+      finish: addDays(start, 126),
+      move_in: moveIn,
+    },
+    buckets,
+    decisions,
+  };
+}
+
 /** Document reading (structured output): "reads" the real text of what it's sent. */
 async function fakeReader(body) {
   const blocks = body.messages.at(-1).content;
   const note = blocks.find((b) => b.type === "text")?.text ?? "";
+  if (/<homeowner_answers>/.test(note)) return fakeSetup(note);
   if (/<facts_found>/.test(note)) {
     const facts = [...note.matchAll(/^- \[([^\]]+)\] (.*?)(?: \(p\.(\d+)\))?$/gm)].map((m) => ({
       topic: m[1],
@@ -89,9 +196,12 @@ async function fakeReader(body) {
         : "A project document.",
       facts: facts.slice(0, 40),
       contract_price_cents: price ? Number(price[1].replace(/,/g, "")) * 100 : null,
-      allowances: [],
+      allowances: facts
+        .map((f) => f.detail.match(/^Allowance: (.*?) \$([\d,]+)/))
+        .filter(Boolean)
+        .map((m) => ({ name: m[1], amount_cents: dollarsToCents(m[2]) })),
       start_date: null,
-      completion_date: null,
+      completion_date: all.match(/completion date:? (\d{4}-\d{2}-\d{2})/)?.[1] ?? null,
       decisions_named: owner.length,
       new_decisions: fresh.map((d) => ({
         title: d.title,

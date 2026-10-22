@@ -72,8 +72,17 @@ export default async function DecisionsPage({
 
       {decisions.length === 0 ? (
         <EmptyState>
-          No decisions yet. Soon you’ll build them from your contract and plans, or the chat will
-          suggest them as you go.
+          No decisions yet.{" "}
+          {can.edit(current.role) ? (
+            <>
+              <Link href="/plan" className="text-accent font-semibold">
+                Set up your project
+              </Link>{" "}
+              to build them from your contract and plans, or the chat will suggest them as you go.
+            </>
+          ) : (
+            "The chat will suggest them as you go."
+          )}
         </EmptyState>
       ) : (
         groups.map((g) => {

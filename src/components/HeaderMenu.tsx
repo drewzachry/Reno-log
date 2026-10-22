@@ -68,6 +68,11 @@ export function HeaderMenu({
               <hr className="border-line my-1" />
             </>
           )}
+          {projects.find((p) => p.id === currentId)?.role !== "viewer" && (
+            <Link href="/plan" className={item} onClick={() => setOpen(false)}>
+              Set up from documents
+            </Link>
+          )}
           <Link href="/settings" className={item} onClick={() => setOpen(false)}>
             Project settings and people
           </Link>

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Chat, type ChatMessage } from "@/components/chat/Chat";
 import { UpNext } from "@/components/record/UpNext";
 import { getSession } from "@/lib/projects";
@@ -84,7 +85,17 @@ export default async function ChatPage() {
 
   return (
     <div className="flex flex-1 flex-col gap-3">
-      <UpNext items={upNextItems(decisions, buckets, ledger, 0, buffer)} />
+      {decisions.length === 0 && can.edit(current.role) ? (
+        <Link href="/plan" className="bg-accent text-accent-ink block rounded p-4">
+          <span className="font-display block text-[17px] font-extrabold">Set up your project</span>
+          <span className="block text-[14px] opacity-90">
+            Add your contract and plans, answer a few questions, and get every decision you’ll need
+            to make, with deadlines. About 10 minutes.
+          </span>
+        </Link>
+      ) : (
+        <UpNext items={upNextItems(decisions, buckets, ledger, 0, buffer)} />
+      )}
       <Chat
         projectId={current.id}
         canEdit={can.edit(current.role)}
