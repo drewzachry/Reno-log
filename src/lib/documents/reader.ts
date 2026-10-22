@@ -1,10 +1,10 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
-import Anthropic from "@anthropic-ai/sdk";
 import type { BetaContentBlockParam } from "@anthropic-ai/sdk/resources/beta/messages/messages";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import sharp from "sharp";
 import type { z } from "zod";
+import { askStructured } from "@/lib/ai/structured";
 import { buildCard, type Card } from "@/lib/chat/cards";
 import { todayIn } from "@/lib/record/dates";
 import { loadRecord } from "@/lib/record/load";
@@ -25,7 +25,6 @@ import {
   batchResult,
   FINISH_SCHEMA,
   finishResult,
-  parseJson,
   type Fact,
 } from "./schemas";
 
@@ -56,18 +55,7 @@ type Doc = {
   file: { storage_path: string; original_name: string; mime_type: string } | null;
 };
 
-function settings() {
-  const effort = process.env.DOCS_EFFORT;
-  return {
-    // Reading long documents well is worth a strong model.
-    model: process.env.DOCS_MODEL || "claude-opus-5-5",
-    effort: (["low", "medium", "high"].includes(effort ?? "") ? effort : "medium") as
-      "low" | "medium" | "high",
-  };
-}
-
-/** One structured-output call; the answer is validated before use. */
-async function ask<T>(
+function ask<T>(
   admin: SupabaseClient,
   doc: Doc,
   system: string,
@@ -75,41 +63,16 @@ async function ask<T>(
   check: z.ZodType<T>,
   content: BetaContentBlockParam[],
 ): Promise<T> {
-  const { model, effort } = settings();
-  const client = new Anthropic({ timeout: 240_000, maxRetries: 1 });
-  const res = await client.beta.messages
-    .stream({
-      model,
-      max_tokens: 32000,
-      betas: ["server-side-fallback-2026-07-01"],
-      fallbacks: "default",
-      output_config: {
-        effort,
-        format: { type: "json_schema", schema: schema as Record<string, unknown> },
-      },
-      system: [{ type: "text", text: system, cache_control: { type: "ephemeral" } }],
-      messages: [{ role: "user", content }],
-    })
-    .finalMessage();
-  await admin.from("usage").insert({
-    project_id: doc.project_id,
-    user_id: doc.created_by,
+  return askStructured({
+    admin,
+    projectId: doc.project_id,
+    userId: doc.created_by,
     purpose: "document",
-    model: res.model,
-    input_tokens: res.usage.input_tokens,
-    output_tokens: res.usage.output_tokens,
-    cache_read_tokens: res.usage.cache_read_input_tokens ?? 0,
-    cache_write_tokens: res.usage.cache_creation_input_tokens ?? 0,
+    system,
+    schema,
+    check,
+    content,
   });
-  if (res.stop_reason === "refusal")
-    throw new ReadError("This document couldn't be read. Try a different copy of it.");
-  const text = res.content
-    .filter((b) => b.type === "text")
-    .map((b) => b.text)
-    .join("");
-  const parsed = parseJson(check, text);
-  if (!parsed) throw new Error(`unreadable model output (${res.stop_reason})`);
-  return parsed;
 }
 
 const setProgress = (admin: SupabaseClient, id: string, progress: string) =>

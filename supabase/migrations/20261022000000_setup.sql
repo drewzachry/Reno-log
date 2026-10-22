@@ -273,3 +273,6 @@ revoke execute on function public.request_setup(uuid, jsonb), public.discard_set
   public.apply_setup(uuid) from public, anon;
 grant execute on function public.request_setup(uuid, jsonb), public.discard_setup(uuid),
   public.apply_setup(uuid) to authenticated;
+
+alter table public.usage drop constraint usage_purpose_check;
+alter table public.usage add constraint usage_purpose_check check (purpose in ('chat', 'document', 'setup'));
