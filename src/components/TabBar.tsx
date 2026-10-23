@@ -34,10 +34,15 @@ export function TabBar() {
                 onClick={() => {
                   if (tab.href !== current?.href) setTapped(tab.href);
                 }}
-                className={`font-display flex h-14 items-center justify-center border-t-[3px] px-0.5 text-[11.5px] font-semibold tracking-[.03em] uppercase [font-stretch:95%] md:h-auto md:border-t-0 md:border-b-[3px] md:px-2.5 md:py-2 md:text-[13.5px] md:tracking-[.04em] ${
-                  isActive ? "border-accent text-ink" : "text-muted border-transparent"
+                className={`flex h-[58px] flex-col items-center justify-center gap-[3px] border-t-[3px] px-0.5 text-[10px] tracking-[.3px] md:h-auto md:flex-row md:border-t-0 md:border-b-[3px] md:px-3 md:py-2.5 md:text-[13.5px] md:font-semibold md:tracking-[.04em] md:uppercase ${
+                  isActive
+                    ? "border-ink text-ink font-bold"
+                    : "text-muted border-transparent font-normal"
                 } ${loading ? "animate-pulse" : ""}`}
               >
+                <span aria-hidden="true" className="text-[19px] leading-none md:hidden">
+                  {tab.icon}
+                </span>
                 <span className="md:hidden">{tab.short}</span>
                 <span className="hidden md:inline">{tab.label}</span>
               </Link>

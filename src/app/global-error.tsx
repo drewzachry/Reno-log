@@ -22,7 +22,7 @@ export default function GlobalError({ error }: { error: Error & { digest?: strin
           Reload
         </button>
         {error.digest && (
-          <p style={{ fontSize: 12, color: "#5b6870" }}>Error code {error.digest}</p>
+          <p style={{ fontSize: 12, color: "#6b7280" }}>Error code {error.digest}</p>
         )}
       </body>
     </html>

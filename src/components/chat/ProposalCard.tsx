@@ -44,9 +44,7 @@ export function ProposalCard({ card, canEdit }: { card: CardData; canEdit: boole
       aria-label={`${card.kind_label}: ${card.summary}`}
       className={`border-line grid gap-1.5 rounded border border-l-4 px-3 py-2.5 ${FRAME[shown]}`}
     >
-      <p className="font-display text-[11px] font-bold tracking-[.09em] uppercase">
-        {card.kind_label}
-      </p>
+      <p className="text-[11px] font-bold tracking-[.09em] uppercase">{card.kind_label}</p>
       <p className="font-semibold [overflow-wrap:anywhere]">{card.summary}</p>
       {card.detail && (
         <p className="text-muted text-[13.5px] [overflow-wrap:anywhere] whitespace-pre-line">

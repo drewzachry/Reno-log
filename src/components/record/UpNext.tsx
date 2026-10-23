@@ -16,7 +16,7 @@ export function UpNext({ items }: { items: UpNextItem[] }) {
   const shown = items.slice(0, all ? 6 : 3);
   return (
     <section aria-label="Up next" className="border-line bg-paper rounded border">
-      <h2 className="font-display text-muted flex items-baseline justify-between px-3.5 pt-3 text-[12.5px] font-bold tracking-[.08em] uppercase [font-stretch:95%]">
+      <h2 className="text-muted flex items-baseline justify-between px-3.5 pt-3 text-[11px] font-bold tracking-[2px] uppercase">
         Up next
         {items.length > 0 && <span className="tabular-nums">{items.length}</span>}
       </h2>

@@ -16,23 +16,23 @@ test("accounts for the project and the buffer", async ({ browser }) => {
     /Savings\s*\$90,000/,
     /Home equity line of credit\s*\$200,000/,
   ]);
-  await expect(funding).toContainText("Set aside$290,000");
-  await expect(funding).toContainText("Still to pay− $273,050");
-  await expect(funding).toContainText("Buffer$16,950");
+  const overview = page.locator("main div.bg-header");
+  await expect(overview).toContainText("Total available$290,000");
+  await expect(overview).toContainText("Total still to pay$273,050");
+  await expect(overview).toContainText("Buffer (surplus)+$16,950");
 
   // Add an account.
   await funding.getByRole("button", { name: "+ Add an account" }).click();
   await funding.getByLabel("Account").fill("Gift from parents");
   await funding.getByLabel("Amount").fill("25,000");
   await funding.getByRole("button", { name: "Add account" }).click();
-  await expect(funding).toContainText("Buffer$41,950");
+  await expect(overview).toContainText("Buffer (surplus)+$41,950");
 
   // Lower the line of credit until the money falls short.
   await funding.getByRole("button", { name: "Edit Home equity line of credit" }).click();
   await funding.getByLabel("Amount").fill("150000");
   await funding.getByRole("button", { name: "Save", exact: true }).click();
-  await expect(funding).toContainText("Short by$8,050");
-  await expect(page.locator("dl").first()).toContainText("Short by");
+  await expect(overview).toContainText("Shortfall−$8,050");
 
   // Up next says so on the Chat tab.
   await page.goto("/");
@@ -60,7 +60,7 @@ test("accounts for the project and the buffer", async ({ browser }) => {
   await join(viewer, link, "fundviewer@example.com", "Vi");
   await expect(viewer.getByRole("banner")).toContainText("(sample)");
   await viewer.goto("/budget");
+  await expect(viewer.locator("main div.bg-header")).toContainText("Shortfall−$33,050");
   const vf = viewer.getByRole("region", { name: "Money for the project" });
-  await expect(vf).toContainText("Short by$33,050");
   await expect(vf.getByRole("button")).toHaveCount(0);
 });

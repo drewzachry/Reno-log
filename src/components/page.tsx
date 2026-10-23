@@ -14,13 +14,9 @@ export function PageHeader({
   return (
     <header className="mb-3">
       {eyebrow && (
-        <p className="font-display text-muted text-[11.5px] font-bold tracking-[.09em] uppercase [font-stretch:90%]">
-          {eyebrow}
-        </p>
+        <p className="text-muted text-[11px] font-bold tracking-[2px] uppercase">{eyebrow}</p>
       )}
-      <h1 className="font-display text-[22px] leading-tight font-extrabold text-balance [font-stretch:112%]">
-        {title}
-      </h1>
+      <h1 className="text-[22px] leading-tight font-bold tracking-[-.5px] text-balance">{title}</h1>
       {lede && <p className="text-muted mt-1 max-w-[60ch] text-[14.5px]">{lede}</p>}
       {children}
     </header>
@@ -42,7 +38,7 @@ export function SectionTitle({
   return (
     <Tag
       id={id}
-      className="font-display text-muted mt-6 mb-2 flex items-baseline justify-between gap-2 text-[12.5px] font-bold tracking-[.08em] uppercase [font-stretch:95%]"
+      className="text-ink mt-6 mb-2.5 flex items-baseline justify-between gap-2 text-[11px] font-bold tracking-[2px] uppercase"
     >
       <span>{children}</span>
       {count != null && <span className="tabular-nums">{count}</span>}

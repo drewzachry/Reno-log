@@ -87,7 +87,7 @@ export default async function ChatPage() {
     <div className="flex flex-1 flex-col gap-3">
       {decisions.length === 0 && can.edit(current.role) ? (
         <Link href="/plan" className="bg-accent text-accent-ink block rounded p-4">
-          <span className="font-display block text-[17px] font-extrabold">Set up your project</span>
+          <span className="block text-[17px] font-extrabold">Set up your project</span>
           <span className="block text-[14px] opacity-90">
             Add your contract and plans, answer a few questions, and get every decision you’ll need
             to make, with deadlines. About 10 minutes.

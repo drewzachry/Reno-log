@@ -41,7 +41,7 @@ export function HeaderMenu({
     <div ref={ref} className="relative flex-none">
       <button
         type="button"
-        className={`${ui.ghost} min-h-10 px-3 text-[13px]`}
+        className="border-header-muted/50 text-header-ink inline-flex min-h-10 items-center rounded border px-3 text-[13px] font-medium hover:bg-white/10"
         aria-expanded={open}
         aria-controls="header-menu"
         onClick={() => setOpen((o) => !o)}

@@ -83,8 +83,25 @@ test("a photo of an invoice proposes an invoice card; the original is kept", asy
   await expect(page.getByText("Plumbing fixtures allowance: $2,610 left of $9,500.")).toBeVisible(
     SLOW,
   );
+  // A bill isn't money out the door yet: the buffer doesn't move until it's marked paid.
+  await expect(page.getByText(/Buffer: \$16,950\./)).toBeVisible();
   await page.goto("/budget");
-  await expect(page.getByText("Rivera Plumbing").first()).toBeVisible();
+  const bill = page.locator("li", { hasText: "Rivera Plumbing" });
+  await expect(bill).toContainText("Not paid yet");
+  const overview = page.locator("main div.bg-header");
+  await expect(overview).toContainText("Buffer (surplus)+$16,950");
+  await expect(page.getByText("Billed, not paid")).toBeVisible();
+  await expect(page.locator("dt", { hasText: "Billed, not paid" }).locator("..")).toContainText(
+    "$2,400",
+  );
+
+  await bill.getByRole("button", { name: "Mark paid: Rivera Plumbing" }).click();
+  await expect(bill).toContainText("Paid", SLOW);
+  await expect(bill).not.toContainText("Not paid yet");
+  await expect(overview).toContainText("Buffer (surplus)+$19,350", SLOW);
+  await expect(overview).toContainText("Total still to pay$270,650");
+  await page.goto("/history");
+  await expect(page.getByText("Invoice marked paid: Rivera Plumbing $2,400")).toBeVisible();
 });
 
 test("a photo of a tile sample proposes a decision update", async ({ page }) => {

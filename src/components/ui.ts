@@ -9,9 +9,8 @@ export const ui = {
     "block min-h-11 w-full rounded border border-line bg-paper px-3 py-2 text-base placeholder:text-muted/70",
   label: "mb-1 block text-sm font-semibold",
   card: "rounded border border-line bg-paper p-4",
-  eyebrow:
-    "font-display text-[11.5px] font-bold tracking-[.09em] text-muted uppercase [font-stretch:90%]",
-  h1: "font-display text-[22px] font-extrabold text-balance [font-stretch:112%]",
+  eyebrow: "text-[11px] font-bold tracking-[2px] text-muted uppercase",
+  h1: "text-[22px] font-bold tracking-[-.5px] text-balance",
   note: "text-sm text-muted",
   error: "rounded bg-bad-soft px-3 py-2 text-sm text-ink",
   ok: "rounded bg-ok-soft px-3 py-2 text-sm text-ink",

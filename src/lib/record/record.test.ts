@@ -252,6 +252,8 @@ describe("buffer", () => {
 describe("money", () => {
   it("formats cents as whole dollars", () => {
     expect(money(125000)).toBe("$1,250");
+    expect(money(14376750)).toBe("$143,767.50");
+    expect(money(-5)).toBe("−$0.05");
     expect(money(-125000)).toBe("−$1,250");
     expect(money(null)).toBe("$0");
   });

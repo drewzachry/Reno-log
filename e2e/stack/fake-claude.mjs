@@ -284,6 +284,7 @@ export async function fakeClaude(body) {
         bucket_id: bucket(briefing, "Plumbing fixtures allowance") ?? null,
         description: "Rough-in plumbing, second draw",
         kind: "invoice",
+        paid: false,
         image_index: 0,
         flags: [],
       },

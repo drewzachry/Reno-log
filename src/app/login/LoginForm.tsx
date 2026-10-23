@@ -17,7 +17,7 @@ export function LoginForm({ next }: { next: string }) {
   if (sent.step === "code") {
     return (
       <div className="grid gap-3">
-        <h2 className="font-display text-lg font-extrabold">Check your email</h2>
+        <h2 className="text-lg font-extrabold">Check your email</h2>
         <p>
           We sent a sign-in link to <b>{sent.email}</b>. Tap it, then come back here. This screen
           carries on by itself.

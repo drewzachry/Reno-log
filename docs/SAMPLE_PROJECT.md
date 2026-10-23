@@ -87,3 +87,16 @@ Then "Place the order: Kitchen sink and faucet", decided but not ordered past it
 - **Money out** = invoices + payments − credits, plus approved change orders. Proposed and
   rejected change orders don't count. (Assumption: invoices and payments are separate costs,
   not an invoice and the payment of that same invoice.)
+
+## How the budget is worked out
+
+Worked the way the project dashboard works it (src/lib/record/budget.ts). Every budget line has:
+
+- **Budget**: the line's budget, plus approved change orders. On the cushion, change orders are spent from it instead.
+- **Actual**: what the line has cost or is committed to cost: what's billed, or on an allowance, the cost of what's been picked if that's more.
+- **Paid**: money that has actually moved: payments and invoices marked paid, less credits. An invoice received but not paid yet counts as billed, not paid.
+- **Still to pay**: what the line will cost (its budget, or its actual if that's more) less what's paid. It includes money reserved for work not billed or picked yet.
+
+**Total still to pay** is the sum of every line's still to pay, the cushion counted in full. **Buffer** is the money set aside (what's available now) less that total. Proposed change orders and money with no budget line are reported, not counted.
+
+Sample: $290,000 available − $273,050 still to pay = $16,950 buffer. Still to pay by line: contract $213,750, tile $7,300, plumbing fixtures $9,500, lighting $4,000, appliances $10,000, cushion $28,500.

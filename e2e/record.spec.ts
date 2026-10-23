@@ -43,11 +43,18 @@ test("the sample project's numbers, and moving rough-in", async ({ page }) => {
   await expect(page.getByText("$77,200")).toBeVisible();
   await expect(page.getByText("$26,100", { exact: true }).first()).toBeVisible();
   const tile = page.locator("article", { hasText: "Tile allowance" });
-  await expect(tile).toContainText("$9,250 of $8,000");
+  // Budget, Actual, Paid, Still to pay: $9,250 picked against $8,000, $1,950 paid.
+  await expect(tile).toContainText("$8,000Budget$9,250Actual$1,950Paid$7,300Still to pay");
   await expect(tile).toContainText("Over by $1,250");
-  await expect(page.locator("article", { hasText: "Plumbing fixtures allowance" })).toContainText(
-    "$2,610 left",
-  );
+  // The plumbing allowance keeps its unpicked $2,610 reserved until it's spent.
+  const plumbing = page.locator("article", { hasText: "Plumbing fixtures allowance" });
+  await expect(plumbing).toContainText("$9,500Budget$6,890Actual—Paid$9,500Still to pay");
+  await expect(plumbing).toContainText("Includes $2,610 set aside for items not picked yet.");
+  // The lines add up to the total, and the total to the buffer.
+  await expect(page.getByText("Total still to pay").first()).toBeVisible();
+  const adds = page.locator("details", { hasText: "How this adds up" });
+  await adds.locator("summary").click();
+  await expect(adds).toContainText("Total still to pay$273,050");
   await expect(page.locator("li", { hasText: "Add blocking for a floating vanity" })).toContainText(
     "Not approved yet",
   );
