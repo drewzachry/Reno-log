@@ -11,6 +11,7 @@ import { AddDocuments } from "../documents/AddDocuments";
 import { DocumentStatus } from "../documents/DocumentStatus";
 import { PlanActions } from "./PlanActions";
 import { PlanForm } from "./PlanForm";
+import { StartOver } from "./StartOver";
 
 export const metadata = { title: "Set up your project" };
 
@@ -83,12 +84,13 @@ export default async function PlanPage() {
       <section>
         <PageHeader
           title="Building your decision map"
-          lede="This takes a minute or two. You can leave this screen; it carries on."
+          lede="This takes a few minutes. You can leave this screen; it carries on."
         />
         <DocumentStatus reading={[latest.updated_at]} />
         <p className="border-line bg-paper text-muted animate-pulse rounded border p-3 text-[14px]">
           {latest.progress ?? "Starting…"}
         </p>
+        <StartOver planId={latest.id} />
       </section>
     );
 

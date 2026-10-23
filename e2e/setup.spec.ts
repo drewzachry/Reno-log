@@ -63,6 +63,9 @@ test("a new project is built from its contract, with a preview first", async ({ 
   const summary = page.getByText(/decisions? \(1 already decided in your documents\)/);
   await expect(summary).toContainText("3 budget lines, 6 dates");
   await expect(page.getByText("Kohler Purist faucet and 33-inch sink")).toBeVisible();
+  // The bathroom gets the whole bathroom list, not a sample of it.
+  await expect(page.getByText("Shower drain (center or linear)")).toBeVisible();
+  await expect(page.getByText("Tub, shower or both")).toBeVisible();
   await expect(
     page
       .getByText("Construction contract · p.2")

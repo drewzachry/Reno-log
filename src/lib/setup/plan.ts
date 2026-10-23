@@ -34,8 +34,28 @@ const obj = (properties: Record<string, unknown>) => ({
   additionalProperties: false,
 });
 
-/** Structured-output schema for the draft plan (docs/AI_BEHAVIOR.md section 3). */
-export const PLAN_SCHEMA = obj({
+export const AREAS = ["bath", "kitchen", "laundry", "basement", "addition", "exterior"] as const;
+export type Area = (typeof AREAS)[number] | "whole";
+
+const nullable = (description?: string) => ({
+  type: ["string", "null"],
+  ...(description && { description }),
+});
+const decisionItem = obj({
+  title: { type: "string" },
+  room: { type: "string" },
+  category: nullable(),
+  milestone_key: { type: "string", enum: [...STAGES] },
+  lead_weeks: { type: "integer" },
+  why: { type: "string" },
+  bucket_key: nullable(),
+  status: { type: "string", enum: ["not_started", "decided"] },
+  selection: nullable(),
+  source: nullable("Document and page, e.g. 'Plans p.A-201'."),
+});
+
+/** Step 1: dates, budget lines and the rooms in the job. Short to write. */
+export const SKELETON_SCHEMA = obj({
   scope: { type: "string", description: "One-line summary of the job." },
   milestones: obj(
     Object.fromEntries(STAGES.map((k) => [k, { type: "string", description: "YYYY-MM-DD" }])),
@@ -49,20 +69,40 @@ export const PLAN_SCHEMA = obj({
       budget_cents: { type: "integer" },
     }),
   },
-  decisions: {
+  rooms: {
+    type: "array",
+    description: "Every room or area being worked on, in the homeowner's words.",
+    items: obj({ name: { type: "string" }, area: { type: "string", enum: [...AREAS] } }),
+  },
+});
+
+/**
+ * Step 2: changes to the decision list the app built from the library, by
+ * number. Only the changes are written, so the answer stays short.
+ */
+export const DETAILS_SCHEMA = obj({
+  skip: {
+    type: "array",
+    items: { type: "integer" },
+    description: "Numbers of listed decisions the scope or documents clearly rule out.",
+  },
+  decided: {
     type: "array",
     items: obj({
-      title: { type: "string" },
-      room: { type: "string" },
-      category: { type: ["string", "null"] },
-      milestone_key: { type: "string", enum: [...STAGES] },
-      lead_weeks: { type: "integer" },
-      why: { type: "string" },
-      bucket_key: { type: ["string", "null"] },
-      status: { type: "string", enum: ["not_started", "decided"] },
-      selection: { type: ["string", "null"] },
-      source: { type: ["string", "null"], description: "Document and page, e.g. 'Plans p.A-201'." },
+      n: { type: "integer" },
+      selection: { type: "string" },
+      source: nullable("Document and page, e.g. 'Plans p.A-201'."),
     }),
+  },
+  links: {
+    type: "array",
+    description: "Listed decisions an allowance pays for.",
+    items: obj({ n: { type: "integer" }, bucket_key: { type: "string" } }),
+  },
+  extra: {
+    type: "array",
+    description: "Decisions this job needs that aren't listed.",
+    items: decisionItem,
   },
 });
 
@@ -185,4 +225,84 @@ export function previewPlan(plan: Plan, existing: Existing) {
       dates: dates.filter((d) => !d.kept).length,
     },
   };
+}
+
+export const skeletonSchema = z.object({
+  scope: z.string().max(500),
+  milestones: planSchema.shape.milestones,
+  buckets: planSchema.shape.buckets,
+  rooms: z.array(z.object({ name: text(100), area: z.enum(AREAS) })).max(40),
+});
+export type Skeleton = z.infer<typeof skeletonSchema>;
+
+const n = z.number().int().min(0).max(1000);
+export const detailsSchema = z.object({
+  skip: z.array(n).max(500),
+  decided: z.array(z.object({ n, selection: text(500), source: nullableText(200) })).max(500),
+  links: z.array(z.object({ n, bucket_key: text(60) })).max(500),
+  extra: planSchema.shape.decisions.element.array().max(150),
+});
+export type Details = z.infer<typeof detailsSchema>;
+
+export type LibraryRow = {
+  category: string;
+  title: string;
+  area: Area;
+  milestone_key: StageKey;
+  lead_weeks: number;
+  why: string;
+};
+
+/**
+ * Every library decision for every room it applies to: each bathroom gets all
+ * the bathroom decisions, each kitchen all the kitchen ones, and whole-house
+ * decisions appear once. Exterior ones appear once if the job has exterior work.
+ */
+export function expandLibrary(library: LibraryRow[], rooms: Skeleton["rooms"]): Plan["decisions"] {
+  const out: Plan["decisions"] = [];
+  const byArea = (a: string) => rooms.filter((r) => r.area === a).map((r) => r.name);
+  for (const l of library) {
+    const where =
+      l.area === "whole"
+        ? ["Whole house"]
+        : l.area === "exterior"
+          ? byArea("exterior").length
+            ? ["Exterior"]
+            : []
+          : byArea(l.area);
+    for (const room of where)
+      out.push({
+        title: l.title,
+        room,
+        category: l.category,
+        milestone_key: l.milestone_key,
+        lead_weeks: l.lead_weeks,
+        why: l.why,
+        bucket_key: null,
+        status: "not_started",
+        selection: null,
+        source: null,
+      });
+  }
+  return out;
+}
+
+/** The full plan: the skeleton, the library list with the model's changes, and its extras. */
+export function assemblePlan(skeleton: Skeleton, base: Plan["decisions"], d: Details): Plan {
+  const skip = new Set(d.skip);
+  const decisions = base.map((x, i) => {
+    const pick = d.decided.find((p) => p.n === i + 1);
+    const link = d.links.find((l) => l.n === i + 1);
+    return {
+      ...x,
+      bucket_key: link?.bucket_key ?? x.bucket_key,
+      ...(pick && { status: "decided" as const, selection: pick.selection, source: pick.source }),
+    };
+  });
+  return normalizePlan({
+    scope: skeleton.scope,
+    milestones: skeleton.milestones,
+    buckets: skeleton.buckets,
+    decisions: [...decisions.filter((_, i) => !skip.has(i + 1)), ...d.extra],
+  });
 }

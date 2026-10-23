@@ -1,5 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { normalizePlan, PLAN_SCHEMA, planSchema, previewPlan, type Plan } from "./plan";
+import {
+  assemblePlan,
+  DETAILS_SCHEMA,
+  expandLibrary,
+  normalizePlan,
+  planSchema,
+  previewPlan,
+  SKELETON_SCHEMA,
+  type LibraryRow,
+  type Plan,
+} from "./plan";
 
 const decision = (over: Partial<Plan["decisions"][number]> = {}): Plan["decisions"][number] => ({
   title: "Shower valve and trim",
@@ -43,7 +53,8 @@ describe("plan schema", () => {
       }
       if (s.items) check(s.items as Record<string, unknown>);
     };
-    check(PLAN_SCHEMA);
+    check(SKELETON_SCHEMA);
+    check(DETAILS_SCHEMA);
   });
 
   it("rejects a draft with bad dates or no decisions", () => {
@@ -124,5 +135,108 @@ describe("preview", () => {
     expect(v.counts).toEqual({ decisions: 1, decided: 1, buckets: 1, dates: 5 });
     expect(v.skipped).toBe(1);
     expect(v.buckets.map((b) => b.exists)).toEqual([true, false]);
+  });
+});
+
+const library: LibraryRow[] = [
+  {
+    category: "Plumbing fixtures",
+    title: "Shower valve and trim",
+    area: "bath",
+    milestone_key: "rough_in",
+    lead_weeks: 4,
+    why: "In the wall.",
+  },
+  {
+    category: "Plumbing fixtures",
+    title: "Tub filler and faucet",
+    area: "bath",
+    milestone_key: "rough_in",
+    lead_weeks: 4,
+    why: "Pipes.",
+  },
+  {
+    category: "Kitchen layout",
+    title: "Island size and seating",
+    area: "kitchen",
+    milestone_key: "rough_in",
+    lead_weeks: 2,
+    why: "Power.",
+  },
+  {
+    category: "Paint",
+    title: "Paint colors and sheens",
+    area: "whole",
+    milestone_key: "finish",
+    lead_weeks: 2,
+    why: "Schedule.",
+  },
+  {
+    category: "Exterior",
+    title: "Gutters and downspouts",
+    area: "exterior",
+    milestone_key: "finish",
+    lead_weeks: 3,
+    why: "Water.",
+  },
+];
+
+describe("building the full list", () => {
+  const rooms = [
+    { name: "Primary bath", area: "bath" as const },
+    { name: "Hall bath", area: "bath" as const },
+    { name: "Kitchen", area: "kitchen" as const },
+  ];
+
+  it("gives every bathroom every bathroom decision, whole-house ones once, exterior only when there's exterior work", () => {
+    const base = expandLibrary(library, rooms);
+    expect(base.map((d) => `${d.title} | ${d.room}`)).toEqual([
+      "Shower valve and trim | Primary bath",
+      "Shower valve and trim | Hall bath",
+      "Tub filler and faucet | Primary bath",
+      "Tub filler and faucet | Hall bath",
+      "Island size and seating | Kitchen",
+      "Paint colors and sheens | Whole house",
+    ]);
+    expect(
+      expandLibrary(library, [...rooms, { name: "Siding", area: "exterior" }]).at(-1),
+    ).toMatchObject({
+      title: "Gutters and downspouts",
+      room: "Exterior",
+    });
+  });
+
+  it("applies the model's changes by number and adds its extras", () => {
+    const base = expandLibrary(library, rooms);
+    const p = assemblePlan(
+      {
+        scope: "Two baths and a kitchen",
+        milestones: plan().milestones,
+        buckets: plan().buckets,
+        rooms,
+      },
+      base,
+      {
+        skip: [4],
+        decided: [{ n: 1, selection: "Delta Trinsic, brushed nickel", source: "Specs p.3" }],
+        links: [
+          { n: 2, bucket_key: "tile" },
+          { n: 3, bucket_key: "nope" },
+        ],
+        extra: [decision({ title: "Shower niche", room: "Hall bath" })],
+      },
+    );
+    expect(p.decisions.map((d) => [d.title, d.room, d.status, d.bucket_key])).toEqual([
+      ["Shower valve and trim", "Primary bath", "decided", null],
+      ["Shower valve and trim", "Hall bath", "not_started", "tile"],
+      ["Tub filler and faucet", "Primary bath", "not_started", null],
+      ["Island size and seating", "Kitchen", "not_started", null],
+      ["Paint colors and sheens", "Whole house", "not_started", null],
+      ["Shower niche", "Hall bath", "not_started", null],
+    ]);
+    expect(p.decisions[0]).toMatchObject({
+      selection: "Delta Trinsic, brushed nickel",
+      source: "Specs p.3",
+    });
   });
 });

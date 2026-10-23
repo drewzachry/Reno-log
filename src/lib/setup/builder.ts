@@ -4,10 +4,24 @@ import { AiError, askStructured } from "@/lib/ai/structured";
 import { todayIn } from "@/lib/record/dates";
 import { loadRecord } from "@/lib/record/load";
 import { money } from "@/lib/record/money";
-import { answersSchema, normalizePlan, PLAN_SCHEMA, planSchema } from "./plan";
-import { SETUP_PROMPT } from "./prompt";
+import {
+  answersSchema,
+  assemblePlan,
+  DETAILS_SCHEMA,
+  detailsSchema,
+  expandLibrary,
+  SKELETON_SCHEMA,
+  skeletonSchema,
+  type LibraryRow,
+  type Skeleton,
+} from "./plan";
+import { DETAILS_PROMPT, SKELETON_PROMPT } from "./prompt";
 
-export type SetupJob = { id: string; payload: { plan_id: string; project_id: string } };
+export type SetupJob = {
+  id: string;
+  payload: { plan_id: string; project_id: string };
+  state: { skeleton?: Skeleton };
+};
 
 type DocRow = {
   title: string;
@@ -17,14 +31,25 @@ type DocRow = {
   document_facts: { topic: string; detail: string; page: number | null; sort_order: number }[];
 };
 
-/** Drafts the plan for a setup request and stores it, ready for the preview. */
-export async function buildSetup(admin: SupabaseClient, job: SetupJob) {
+/** Each step is one short call; this is the most one may take. */
+const STEP_TIMEOUT_MS = 200_000;
+
+/**
+ * Drafts the plan for a setup request in two steps, saving after the first,
+ * and stores it ready for the preview. Returns "more" when the second step
+ * should run in a fresh call (so neither gets near the time limit).
+ */
+export async function buildSetup(
+  admin: SupabaseClient,
+  job: SetupJob,
+  mayStart: () => boolean,
+): Promise<"done" | "more"> {
   const { data: row } = await admin
     .from("setup_plans")
     .select("id, project_id, created_by, status, answers")
     .eq("id", job.payload.plan_id)
     .maybeSingle();
-  if (!row || row.status !== "building") return;
+  if (!row || row.status !== "building") return "done";
   const answers = answersSchema.safeParse(row.answers);
   if (!answers.success) throw new AiError("Those answers didn't come through. Please try again.");
   const a = answers.data;
@@ -33,7 +58,6 @@ export async function buildSetup(admin: SupabaseClient, job: SetupJob) {
       .from("setup_plans")
       .update({ progress: p, updated_at: new Date().toISOString() })
       .eq("id", row.id);
-  await progress("Reading your answers and documents");
 
   const today = todayIn(undefined);
   const [record, docs, library] = await Promise.all([
@@ -64,23 +88,6 @@ export async function buildSetup(admin: SupabaseClient, job: SetupJob) {
         .join("\n"),
     )
     .join("\n\n");
-  const lib = (library.data ?? [])
-    .map(
-      (l) =>
-        `${l.category} | ${l.title} | ${l.area} | ${l.milestone_key} | ${l.lead_weeks} | ${l.why}`,
-    )
-    .join("\n");
-  const existing = [
-    "Stages: " +
-      record.milestones
-        .map((m) => `${m.key} = ${m.label}${m.date ? ` (${m.date})` : ""}`)
-        .join("; "),
-    "Budget lines: " +
-      (record.buckets.map((b) => `${b.name} (${b.kind}, ${money(b.budget_cents)})`).join("; ") ||
-        "none"),
-    "Decisions (title | room):\n" +
-      (record.decisions.map((d) => `${d.title} | ${d.room}`).join("\n") || "none"),
-  ].join("\n");
   const answerText = [
     `What they're renovating: ${a.scope}`,
     `Construction start: ${a.start_date}`,
@@ -89,35 +96,80 @@ export async function buildSetup(admin: SupabaseClient, job: SetupJob) {
     `Cushion set aside: ${a.cushion_cents != null ? money(a.cushion_cents) : "not given"}`,
     `Allowances: ${a.allowances.trim() || "not given"}`,
   ].join("\n");
+  const context = `Today: ${today}\n\n<homeowner_answers>\n${answerText}\n</homeowner_answers>\n\n<documents>\n${docText || "(none uploaded)"}\n</documents>`;
+  const ask = <T>(
+    system: string,
+    schema: object,
+    check: Parameters<typeof askStructured<T>>[0]["check"],
+    text: string,
+  ) =>
+    askStructured<T>({
+      admin,
+      projectId: row.project_id,
+      userId: row.created_by,
+      purpose: "setup",
+      system,
+      schema,
+      check,
+      timeoutMs: STEP_TIMEOUT_MS,
+      content: [{ type: "text", text }],
+    });
 
-  await progress("Building your decision map");
-  const plan = await askStructured({
-    admin,
-    projectId: row.project_id,
-    userId: row.created_by,
-    purpose: "setup",
-    system: SETUP_PROMPT,
-    schema: PLAN_SCHEMA,
-    check: planSchema,
-    maxTokens: 64000,
-    timeoutMs: 270_000,
-    content: [
-      {
-        type: "text",
-        text: `Today: ${today}\n\n<homeowner_answers>\n${answerText}\n</homeowner_answers>\n\n<documents>\n${docText || "(none uploaded)"}\n</documents>\n\n<already_in_project>\n${existing}\n</already_in_project>\n\n<decision_library columns="category | title | area | stage | lead weeks | why">\n${lib}\n</decision_library>`,
-      },
-    ],
-  });
+  // Step 1: dates, budget lines and rooms.
+  let skeleton = job.state?.skeleton;
+  if (!skeleton) {
+    await progress("Working out your dates, budget and rooms");
+    const existing = [
+      "Stages: " +
+        record.milestones
+          .map((m) => `${m.key} = ${m.label}${m.date ? ` (${m.date})` : ""}`)
+          .join("; "),
+      "Budget lines: " +
+        (record.buckets.map((b) => `${b.name} (${b.kind}, ${money(b.budget_cents)})`).join("; ") ||
+          "none"),
+      "Rooms on the decision list: " +
+        ([...new Set(record.decisions.map((d) => d.room))].join("; ") || "none"),
+    ].join("\n");
+    skeleton = await ask(
+      SKELETON_PROMPT,
+      SKELETON_SCHEMA,
+      skeletonSchema,
+      `${context}\n\n<already_in_project>\n${existing}\n</already_in_project>`,
+    );
+    await admin.from("jobs").update({ state: { skeleton } }).eq("id", job.id);
+    if (!mayStart()) {
+      await progress("Matching decisions to your rooms and documents");
+      return "more";
+    }
+  }
+
+  // Step 2: the library for each room, adjusted to the documents.
+  await progress("Matching decisions to your rooms and documents");
+  const base = expandLibrary((library.data ?? []) as LibraryRow[], skeleton.rooms);
+  const listed = base
+    .map((d, i) => `${i + 1}. ${d.title} | ${d.room} | ${d.category ?? ""}`)
+    .join("\n");
+  const buckets =
+    skeleton.buckets
+      .map((b) => `${b.key}: ${b.name} (${b.kind}, ${money(b.budget_cents)})`)
+      .join("\n") || "none";
+  const details = await ask(
+    DETAILS_PROMPT,
+    DETAILS_SCHEMA,
+    detailsSchema,
+    `${context}\n\n<budget_lines>\n${buckets}\n</budget_lines>\n\n<listed_decisions columns="n. title | room | category">\n${listed}\n</listed_decisions>`,
+  );
 
   // Saved only if it's still the draft being waited for.
   await admin
     .from("setup_plans")
     .update({
-      plan: normalizePlan(plan),
+      plan: assemblePlan(skeleton, base, details),
       status: "ready",
       progress: null,
       updated_at: new Date().toISOString(),
     })
     .eq("id", row.id)
     .eq("status", "building");
+  return "done";
 }

@@ -64,8 +64,8 @@ const addDays = (iso, n) => {
 };
 const dollarsToCents = (t) => Math.round(Number(t.replace(/[$,]/g, "")) * 100);
 
-/** Project setup: a plan from the answers, documents and library it's given. */
-function fakeSetup(note) {
+/** Project setup, step 1: dates, budget lines and rooms from the answers. */
+function fakeSkeleton(note) {
   const get = (label) => note.match(new RegExp(`^${label}: (.*)$`, "m"))?.[1] ?? "";
   const scope = get("What they're renovating");
   const start = get("Construction start");
@@ -80,29 +80,6 @@ function fakeSetup(note) {
       cents: dollarsToCents(m[2]),
     }),
   );
-  const lib = (note.match(/<decision_library[^>]*>\n([\s\S]*?)\n<\/decision_library>/)?.[1] ?? "")
-    .split("\n")
-    .map((l) => l.split(" | "));
-  const baths = [...scope.matchAll(/\b(primary|hall|guest|kids) bath/gi)].map(
-    (m) => `${m[1][0].toUpperCase()}${m[1].slice(1).toLowerCase()} bath`,
-  );
-  const rooms = {
-    bath: baths,
-    kitchen: /kitchen/i.test(scope) ? ["Kitchen"] : [],
-    whole: ["Whole house"],
-  };
-  const docs = note.match(/<documents>\n([\s\S]*?)\n<\/documents>/)?.[1] ?? "";
-  const docTitle = (at) =>
-    docs
-      .slice(0, at)
-      .match(/### (.*?) \(/g)
-      ?.at(-1)
-      ?.slice(4, -2) ?? "Document";
-  const picks = [...docs.matchAll(/Selected: (.*?) = (.*?)\.(?: \(p\.(\d+)\))?$/gm)].map((m) => ({
-    title: m[1],
-    selection: m[2],
-    source: `${docTitle(m.index)} p.${m[3]}`,
-  }));
   const buckets = [];
   if (contract)
     buckets.push({
@@ -125,29 +102,11 @@ function fakeSetup(note) {
       kind: "contingency",
       budget_cents: cushion ? dollarsToCents(cushion) : Math.round(dollarsToCents(contract) / 10),
     });
-  const decisions = [];
-  for (const [category, title, area, stage, lead, why] of lib) {
-    for (const room of rooms[area] ?? []) {
-      if (area === "whole" && decisions.filter((d) => d.room === "Whole house").length >= 6)
-        continue;
-      const pick = picks.find((p) => p.title === title);
-      const bucket = buckets.find(
-        (b) => b.kind === "allowance" && category.toLowerCase().includes(b.key),
-      );
-      decisions.push({
-        title,
-        room,
-        category,
-        milestone_key: stage,
-        lead_weeks: Number(lead),
-        why,
-        bucket_key: bucket?.key ?? null,
-        status: pick ? "decided" : "not_started",
-        selection: pick?.selection ?? null,
-        source: pick?.source ?? null,
-      });
-    }
-  }
+  const rooms = [...scope.matchAll(/\b(primary|hall|guest|kids) bath/gi)].map((m) => ({
+    name: `${m[1][0].toUpperCase()}${m[1].slice(1).toLowerCase()} bath`,
+    area: "bath",
+  }));
+  if (/kitchen/i.test(scope)) rooms.push({ name: "Kitchen", area: "kitchen" });
   return {
     scope,
     milestones: {
@@ -159,7 +118,45 @@ function fakeSetup(note) {
       move_in: moveIn,
     },
     buckets,
-    decisions,
+    rooms,
+  };
+}
+
+/** Project setup, step 2: what the documents decide, and allowance links, by number. */
+function fakeDetails(note) {
+  const listed = (
+    note.match(/<listed_decisions[^>]*>\n([\s\S]*?)\n<\/listed_decisions>/)?.[1] ?? ""
+  )
+    .split("\n")
+    .map((l) => {
+      const m = l.match(/^(\d+)\. (.*?) \| (.*?) \| (.*)$/);
+      return m && { n: Number(m[1]), title: m[2], room: m[3], category: m[4] };
+    })
+    .filter(Boolean);
+  const keys = [...note.matchAll(/^(\w+): .*\(allowance,/gm)].map((m) => m[1]);
+  const docs = note.match(/<documents>\n([\s\S]*?)\n<\/documents>/)?.[1] ?? "";
+  const docTitle = (at) =>
+    docs
+      .slice(0, at)
+      .match(/### (.*?) \(/g)
+      ?.at(-1)
+      ?.slice(4, -2) ?? "Document";
+  const picks = [...docs.matchAll(/Selected: (.*?) = (.*?)\.(?: \(p\.(\d+)\))?$/gm)];
+  return {
+    skip: [],
+    decided: picks
+      .map((m) => {
+        const d = listed.find((x) => x.title === m[1]);
+        return d && { n: d.n, selection: m[2], source: `${docTitle(m.index)} p.${m[3]}` };
+      })
+      .filter(Boolean),
+    links: listed
+      .map((d) => {
+        const key = keys.find((k) => d.category.toLowerCase().includes(k));
+        return key && { n: d.n, bucket_key: key };
+      })
+      .filter(Boolean),
+    extra: [],
   };
 }
 
@@ -167,7 +164,8 @@ function fakeSetup(note) {
 async function fakeReader(body) {
   const blocks = body.messages.at(-1).content;
   const note = blocks.find((b) => b.type === "text")?.text ?? "";
-  if (/<homeowner_answers>/.test(note)) return fakeSetup(note);
+  if (/<listed_decisions/.test(note)) return fakeDetails(note);
+  if (/<homeowner_answers>/.test(note)) return fakeSkeleton(note);
   if (/<facts_found>/.test(note)) {
     const facts = [...note.matchAll(/^- \[([^\]]+)\] (.*?)(?: \(p\.(\d+)\))?$/gm)].map((m) => ({
       topic: m[1],

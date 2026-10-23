@@ -80,9 +80,10 @@ export async function runJobs(origin: string) {
     const job = data as Job | null;
     if (!job?.id) break;
     const now = () => new Date().toISOString();
-    // Drafting a whole-house plan can take several minutes in one call, so it
-    // only starts at the beginning of a run, well inside the 300s limit.
-    if (job.type === "build_setup" && Date.now() - started > 20_000) {
+    // A setup step is one AI call of up to a few minutes, so it only starts
+    // early in a run, well inside the 300s limit.
+    const mayStart = () => Date.now() - started < 60_000;
+    if (job.type === "build_setup" && !mayStart()) {
       await admin
         .from("jobs")
         .update({
@@ -98,7 +99,7 @@ export async function runJobs(origin: string) {
     try {
       const r =
         job.type === "build_setup"
-          ? (await buildSetup(admin, job as SetupJob), "done" as const)
+          ? await buildSetup(admin, job as SetupJob, mayStart)
           : await readDocument(admin, job as ReadJob, deadline);
       if (r === "done") {
         await admin
@@ -106,9 +107,16 @@ export async function runJobs(origin: string) {
           .update({ status: "done", locked_until: null, updated_at: now() })
           .eq("id", job.id);
       } else {
+        // Carrying on in a fresh run isn't a failed attempt.
         await admin
           .from("jobs")
-          .update({ status: "queued", locked_until: null, run_after: now(), updated_at: now() })
+          .update({
+            status: "queued",
+            locked_until: null,
+            run_after: now(),
+            attempts: job.attempts - 1,
+            updated_at: now(),
+          })
           .eq("id", job.id);
         more = true;
         break;
