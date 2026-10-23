@@ -255,6 +255,14 @@ export async function fakeClaude(body) {
     .filter((b) => b.type === "text")
     .map((b) => b.text)
     .join("\n");
+  // Models that don't take the backup-model setting, and requests the API refuses.
+  const refuse = (message) => ({
+    __status: 400,
+    body: { type: "error", error: { type: "invalid_request_error", message } },
+  });
+  if (/\[\[no-fallbacks\]\]/.test(text) && body.fallbacks)
+    return refuse("fallbacks: this model does not support server-side fallbacks");
+  if (/\[\[always-400\]\]/.test(text)) return refuse("model: claude-nope-1 is not a known model");
   const images = blocks.filter((b) => b.type === "image").length;
 
   let reply = "Got it.";

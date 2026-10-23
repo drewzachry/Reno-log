@@ -46,20 +46,28 @@ export async function askStructured<T>(opts: {
 }): Promise<T> {
   const { model, effort } = heavySettings();
   const client = new Anthropic({ timeout: opts.timeoutMs ?? 240_000, maxRetries: 1 });
+  const request = {
+    model,
+    max_tokens: opts.maxTokens ?? 32000,
+    output_config: {
+      effort,
+      format: { type: "json_schema" as const, schema: opts.schema as Record<string, unknown> },
+    },
+    system: [
+      { type: "text" as const, text: opts.system, cache_control: { type: "ephemeral" as const } },
+    ],
+    messages: [{ role: "user" as const, content: opts.content }],
+  };
+  // Ask for the backup model on refusals; not every model accepts that, so if the
+  // request is rejected, ask again without it.
   const res = await client.beta.messages
-    .stream({
-      model,
-      max_tokens: opts.maxTokens ?? 32000,
-      betas: ["server-side-fallback-2026-07-01"],
-      fallbacks: "default",
-      output_config: {
-        effort,
-        format: { type: "json_schema", schema: opts.schema as Record<string, unknown> },
-      },
-      system: [{ type: "text", text: opts.system, cache_control: { type: "ephemeral" } }],
-      messages: [{ role: "user", content: opts.content }],
-    })
-    .finalMessage();
+    .stream({ ...request, betas: ["server-side-fallback-2026-07-01"], fallbacks: "default" })
+    .finalMessage()
+    .catch((e: unknown) => {
+      if (!(e instanceof Anthropic.BadRequestError)) throw e;
+      console.error("ai: retrying without the backup-model setting:", e.message.slice(0, 300));
+      return client.beta.messages.stream(request).finalMessage();
+    });
   await opts.admin.from("usage").insert({
     project_id: opts.projectId,
     user_id: opts.userId,

@@ -163,3 +163,21 @@ test("a Viewer can ask questions but sees no Log it buttons", async ({ page, bro
   await expect(page.getByText("What finish should the faucet be?")).toBeVisible();
   await expect(page.getByText("Val", { exact: true })).toBeVisible();
 });
+
+test("a model that won't take the backup-model setting still answers; a rejected request says why", async ({
+  page,
+}) => {
+  await openSample(page, "reject@example.com");
+  await say(page, "What finish should the towel bars be? [[no-fallbacks]]");
+  await expect(page.getByText("Any finish works; pick one and use it throughout.")).toBeVisible(
+    SLOW,
+  );
+
+  await say(page, "Anything else? [[always-400]]");
+  await expect(
+    page.getByText(
+      /the AI rejected the request \(error 400: .*claude-nope-1 is not a known model\)/,
+    ),
+  ).toBeVisible(SLOW);
+  await expect(page.getByText(/check CHAT_MODEL in Vercel/)).toBeVisible();
+});

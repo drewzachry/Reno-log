@@ -77,7 +77,16 @@ function apiErrorMessage(e: unknown) {
     return "I'm busy right now. Your message is saved; try again in a minute.";
   if (e instanceof Anthropic.APIConnectionError)
     return "I couldn't reach the AI just now. Your message is saved; try again in a minute.";
-  return "I couldn't answer that just now. Your message is saved; try again in a minute.";
+  // A request the AI refused to accept (a bad setting, an unknown model): say why,
+  // since trying again won't help. The API's message holds no project data.
+  if (e instanceof Anthropic.APIError && e.status && e.status >= 400 && e.status < 500) {
+    const body = e.error as { error?: { message?: string } } | undefined;
+    const why = (body?.error?.message ?? e.message ?? "").slice(0, 220);
+    return `I couldn't answer that: the AI rejected the request (error ${e.status}${why ? `: ${why}` : ""}). Your message is saved. If this keeps happening, check CHAT_MODEL in Vercel.`;
+  }
+  // Something went wrong on our side. Name the kind of failure so it can be found in the logs.
+  const kind = e instanceof Error ? e.constructor.name : "unknown";
+  return `I couldn't answer that just now (${kind}). Your message is saved; try again in a minute.`;
 }
 
 /**
@@ -264,27 +273,38 @@ export async function chatTurn(req: TurnRequest): Promise<TurnResult> {
   const messages: BetaMessageParam[] = [...turns, { role: "user", content }];
 
   let reply: string;
-  let cards: Card[] = [];
+  const cards: Card[] = [];
   try {
     const client = new Anthropic({ timeout: 55_000, maxRetries: 1 });
-    const res = await client.beta.messages.create({
+    const request = {
       model,
       max_tokens: 16000,
-      betas: ["server-side-fallback-2026-07-01"],
-      fallbacks: "default",
       output_config: { effort },
       system: [
-        { type: "text", text: SYSTEM_PROMPT, cache_control: { type: "ephemeral" } },
         {
-          type: "text",
+          type: "text" as const,
+          text: SYSTEM_PROMPT,
+          cache_control: { type: "ephemeral" as const },
+        },
+        {
+          type: "text" as const,
           text: `<project_briefing>\n${briefing}\n</project_briefing>`,
-          cache_control: { type: "ephemeral" },
+          cache_control: { type: "ephemeral" as const },
         },
       ],
       tools: TOOLS as unknown as BetaTool[],
-      tool_choice: { type: "auto" },
+      tool_choice: { type: "auto" as const },
       messages,
-    });
+    };
+    // The backup model answers if the first declines. Not every model accepts that
+    // setting, so if the request is rejected, ask again without it.
+    const res = await client.beta.messages
+      .create({ ...request, betas: ["server-side-fallback-2026-07-01"], fallbacks: "default" })
+      .catch((e: unknown) => {
+        if (!(e instanceof Anthropic.BadRequestError)) throw e;
+        console.error("chat: retrying without the backup-model setting:", e.message.slice(0, 300));
+        return client.beta.messages.create(request);
+      });
 
     await admin.from("usage").insert({
       project_id: req.projectId,
@@ -312,7 +332,19 @@ export async function chatTurn(req: TurnRequest): Promise<TurnResult> {
           facts: facts.data ?? [],
           imageFileIds: images.map((i) => i.fileId),
         };
-        cards = calls.map((c) => buildCard(c, ctx)).filter((c): c is Card => c != null);
+        // One card that can't be built is dropped; the reply and the other cards still show.
+        for (const c of calls) {
+          try {
+            const card = buildCard(c, ctx);
+            if (card) cards.push(card);
+          } catch (e) {
+            console.error(
+              "chat: couldn't build a card",
+              c.name,
+              e instanceof Error ? e.message : "",
+            );
+          }
+        }
       }
       if (!reply)
         reply = cards.length

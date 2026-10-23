@@ -215,6 +215,7 @@ http
     if (url.pathname === "/v1/messages" && req.method === "POST") {
       const body = await readBody(req);
       const msg = await fakeClaude(body);
+      if (msg.__status) return send(res, msg.__status, msg.body);
       if (!body.stream) return send(res, 200, msg);
       res.writeHead(200, { "content-type": "text/event-stream" });
       return res.end(toEvents(msg));
