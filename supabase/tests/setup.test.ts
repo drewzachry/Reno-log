@@ -100,7 +100,7 @@ describe("decision library", () => {
       viewer,
       "select count(*)::int n, count(*) filter (where area = 'bath')::int baths from public.decision_library",
     );
-    expect(r.n).toBe(62);
+    expect(r.n).toBe(101);
     expect(r.baths).toBeGreaterThan(10);
   });
 });

@@ -106,7 +106,7 @@ export const planSchema = z.object({
       }),
     )
     .min(1)
-    .max(120),
+    .max(250),
 });
 export type Plan = z.infer<typeof planSchema>;
 
@@ -142,7 +142,7 @@ export function normalizePlan(plan: Plan): Plan {
       selection: d.status === "decided" ? d.selection : null,
     });
   }
-  return { scope: plan.scope.trim(), milestones, buckets, decisions: decisions.slice(0, 90) };
+  return { scope: plan.scope.trim(), milestones, buckets, decisions: decisions.slice(0, 250) };
 }
 
 export type Existing = {

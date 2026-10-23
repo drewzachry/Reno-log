@@ -99,6 +99,8 @@ export async function buildSetup(admin: SupabaseClient, job: SetupJob) {
     system: SETUP_PROMPT,
     schema: PLAN_SCHEMA,
     check: planSchema,
+    maxTokens: 64000,
+    timeoutMs: 270_000,
     content: [
       {
         type: "text",

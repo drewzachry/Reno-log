@@ -23,12 +23,17 @@ Rules:
   "Cushion" (default 10% of the contract when not given). Add "owner" lines
   only for things the homeowner buys themselves. Leave out lines you have no
   amount for.
-- Decisions: pick library decisions that apply to this scope. Repeat them per
-  room where the library's area says so (each bathroom gets its own valve,
-  vanity and tile; "whole" and "exterior" appear once), using the homeowner's
-  own room names. Add decisions the library misses that this scope clearly
-  needs. 25-70 in total. One plain sentence for each "why". Link a decision
-  to an allowance's bucket_key when that allowance pays for it.
+- Decisions: the homeowner must see every decision they will face, so be
+  complete. Include every library decision whose area is part of this scope,
+  repeated for every room of that kind (each bathroom gets its own layout,
+  valve, shower head, faucets, vanity, lighting, tile, grout and glass;
+  "whole" and "exterior" appear once), using the homeowner's own room names.
+  Leave one out only when the scope or documents clearly rule it out (for
+  example, no tub filler in a shower-only bathroom). Then add decisions the
+  library misses that this scope clearly needs. Don't trim the list to keep it
+  short: a full bathroom alone has 30 or more. One plain sentence for each
+  "why". Link a decision to an allowance's bucket_key when that allowance pays
+  for it.
 - Documents come first: use their rooms, fixtures and finishes. Take dates,
   the contract price and allowances from them when the answers are blank. If
   the plans or specs already fix a selection (a model number, a material),

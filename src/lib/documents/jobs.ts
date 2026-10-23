@@ -67,7 +67,8 @@ async function report(
 export async function runJobs(origin: string) {
   const admin = createAdminClient();
   if (!admin || !process.env.ANTHROPIC_API_KEY) return;
-  const deadline = Date.now() + WORK_MS;
+  const started = Date.now();
+  const deadline = started + WORK_MS;
   let more = false;
 
   while (Date.now() < deadline) {
@@ -79,6 +80,21 @@ export async function runJobs(origin: string) {
     const job = data as Job | null;
     if (!job?.id) break;
     const now = () => new Date().toISOString();
+    // Drafting a whole-house plan can take several minutes in one call, so it
+    // only starts at the beginning of a run, well inside the 300s limit.
+    if (job.type === "build_setup" && Date.now() - started > 20_000) {
+      await admin
+        .from("jobs")
+        .update({
+          status: "queued",
+          locked_until: null,
+          attempts: job.attempts - 1,
+          updated_at: now(),
+        })
+        .eq("id", job.id);
+      more = true;
+      break;
+    }
     try {
       const r =
         job.type === "build_setup"

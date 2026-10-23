@@ -40,13 +40,16 @@ export async function askStructured<T>(opts: {
   schema: object;
   check: z.ZodType<T>;
   content: BetaContentBlockParam[];
+  /** Room for long answers (a whole-house plan); thinking counts toward it. */
+  maxTokens?: number;
+  timeoutMs?: number;
 }): Promise<T> {
   const { model, effort } = heavySettings();
-  const client = new Anthropic({ timeout: 240_000, maxRetries: 1 });
+  const client = new Anthropic({ timeout: opts.timeoutMs ?? 240_000, maxRetries: 1 });
   const res = await client.beta.messages
     .stream({
       model,
-      max_tokens: 32000,
+      max_tokens: opts.maxTokens ?? 32000,
       betas: ["server-side-fallback-2026-07-01"],
       fallbacks: "default",
       output_config: {
