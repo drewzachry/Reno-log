@@ -37,6 +37,11 @@ export const proposalSchema = z.discriminatedUnion("type", [
     id: z.uuid(),
   }),
   z.object({
+    type: z.literal("set_invoice_paid"),
+    entry_id: z.uuid(),
+    paid: z.boolean(),
+  }),
+  z.object({
     type: z.literal("move_milestone"),
     project_id: z.uuid(),
     milestone_key: z.string().regex(/^[a-z_]{1,40}$/),

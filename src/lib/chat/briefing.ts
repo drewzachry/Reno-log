@@ -70,7 +70,11 @@ export function buildBriefing(b: BriefingInput): string {
   }
   if (!sorted.length) out.push("(none yet)");
 
-  out.push("", "## Budget lines (id | name | kind | budget | paid | committed | left)");
+  out.push(
+    "",
+    "## Budget lines (id | name | kind | budget | actual | paid | still to pay | room left)",
+    "Budget includes approved change orders (except on the cushion). Actual is what's billed or picked. Still to pay is what the line will cost less what's paid; it includes money reserved for work not billed or picked yet.",
+  );
   for (const x of b.buckets) {
     const s = bucketStats(x, b.ledger, b.decisions);
     out.push(
@@ -78,9 +82,10 @@ export function buildBriefing(b: BriefingInput): string {
         x.id,
         cell(x.name),
         x.kind,
-        money(x.budget_cents),
+        money(s.allowed),
+        money(s.actual),
         money(s.paid),
-        money(s.used),
+        money(s.remaining),
         s.left < 0 ? `${money(-s.left)} OVER` : money(s.left),
       ].join(" | "),
     );

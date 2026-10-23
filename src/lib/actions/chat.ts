@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { userMessage } from "@/lib/errors";
-import { bucketStats } from "@/lib/record/budget";
+import { bucketStats, bufferSummary } from "@/lib/record/budget";
 import { loadRecord } from "@/lib/record/load";
 import { money } from "@/lib/record/money";
 import { rippleMessage } from "@/lib/record/ripple";
@@ -42,9 +42,13 @@ async function followUp(
   const b = bucketId && record.buckets.find((x) => x.id === bucketId);
   if (!b) return null;
   const s = bucketStats(b, record.ledger, record.decisions);
-  return s.left < 0
-    ? `${b.name} is now ${money(-s.left)} over budget.`
-    : `${b.name}: ${money(s.left)} left of ${money(b.budget_cents)}.`;
+  const line =
+    s.left < 0
+      ? `${b.name} is now ${money(-s.left)} over budget.`
+      : `${b.name}: ${money(s.left)} left of ${money(s.allowed)}.`;
+  if (!record.sources.length) return line;
+  const f = bufferSummary(record.sources, record.buckets, record.ledger, record.decisions);
+  return `${line} ${f.buffer < 0 ? `You're now ${money(-f.buffer)} short of what's still to pay.` : `Buffer: ${money(f.buffer)}.`}`;
 }
 
 /** "Log it": applies the card in the database, then says what changed. */

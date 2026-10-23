@@ -69,6 +69,7 @@ function entry(partial: Partial<LedgerEntry>): LedgerEntry {
     bucket_id: null,
     flags: [],
     change_order_status: null,
+    unpaid: false,
     ...partial,
   };
 }
@@ -106,7 +107,12 @@ export function buildCard(call: ToolCall, ctx: CardContext): Card | null {
       const warnings: string[] = [];
       const dup = p.kind !== "credit" && duplicateOf(p.vendor, p.amount_cents, ctx);
       if (dup)
-        warnings.push(`Same amount as ${dup.vendor} on ${shortDate(dup.date)}: a duplicate?`);
+        warnings.push(
+          p.kind === "payment" && dup.kind === "invoice" && dup.unpaid
+            ? `Matches the unpaid invoice from ${dup.vendor} on ${shortDate(dup.date)}: mark that one paid instead?`
+            : `Same amount as ${dup.vendor} on ${shortDate(dup.date)}: a duplicate?`,
+        );
+      const unpaid = p.kind === "invoice" && !p.paid;
       const over =
         bucket &&
         p.kind !== "credit" &&
@@ -114,7 +120,13 @@ export function buildCard(call: ToolCall, ctx: CardContext): Card | null {
           bucket,
           [
             ...ctx.ledger,
-            entry({ kind: p.kind, amount_cents: p.amount_cents, bucket_id: bucket.id, date }),
+            entry({
+              kind: p.kind,
+              amount_cents: p.amount_cents,
+              bucket_id: bucket.id,
+              date,
+              unpaid,
+            }),
           ],
           ctx.decisions,
           ctx,
@@ -129,6 +141,7 @@ export function buildCard(call: ToolCall, ctx: CardContext): Card | null {
         type: "log_invoice",
         payload: {
           kind: p.kind,
+          unpaid,
           vendor: p.vendor,
           date,
           amount_cents: p.amount_cents,
@@ -141,7 +154,7 @@ export function buildCard(call: ToolCall, ctx: CardContext): Card | null {
         summary: `${p.vendor} · ${money(p.amount_cents)}`,
         detail: lines(
           p.description.trim(),
-          `${shortDate(date)} · ${bucket ? bucket.name : "No budget line yet"}`,
+          `${shortDate(date)} · ${bucket ? bucket.name : "No budget line yet"}${unpaid ? " · Not paid yet" : ""}`,
         ),
         warnings,
       };

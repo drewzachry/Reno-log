@@ -69,6 +69,14 @@ export async function applyProposal(input: unknown): Promise<ApplyResult> {
     return error ? fail(p.type, error) : { ok: true };
   }
 
+  if (p.type === "set_invoice_paid") {
+    const { error } = await supabase.rpc("set_invoice_paid", {
+      p_entry_id: p.entry_id,
+      p_paid: p.paid,
+    });
+    return error ? fail(p.type, error) : { ok: true };
+  }
+
   const { data, error } = await supabase.rpc("move_milestone", {
     p_project_id: p.project_id,
     p_key: p.milestone_key,

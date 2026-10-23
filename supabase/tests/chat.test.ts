@@ -169,6 +169,58 @@ describe("confirming proposals", () => {
     );
   });
 
+  it("logs a bill as not paid yet, and editors can mark it paid and back", async () => {
+    const id = await propose("log_invoice", {
+      kind: "invoice",
+      unpaid: true,
+      vendor: "Oak & Sons",
+      date: "2026-10-12",
+      amount_cents: 500000,
+      description: "Progress bill",
+      bucket_id: null,
+      file_id: null,
+      flags: [],
+    });
+    const entry = (await confirm(owner, id)).r.ledger_entry_id as string;
+    const row = async () =>
+      (await db.query("select unpaid from public.ledger_entries where id = $1", [entry])).rows[0]
+        .unpaid;
+    expect(await row()).toBe(true);
+    expect((await lastEvent()).summary).toBe(
+      "Invoice logged: Oak & Sons $5,000 for Progress bill, not paid yet",
+    );
+
+    await expect(
+      one(viewer, "select public.set_invoice_paid($1, true)", [entry]),
+    ).rejects.toThrow();
+    await one(owner, "select public.set_invoice_paid($1, true)", [entry]);
+    expect(await row()).toBe(false);
+    expect((await lastEvent()).summary).toBe("Invoice marked paid: Oak & Sons $5,000");
+    await one(owner, "select public.set_invoice_paid($1, false)", [entry]);
+    expect(await row()).toBe(true);
+    expect((await lastEvent()).summary).toBe("Invoice marked not paid: Oak & Sons $5,000");
+    // Marking it the way it already is writes nothing.
+    const before = (await db.query("select count(*)::int n from public.events")).rows[0].n;
+    await one(owner, "select public.set_invoice_paid($1, false)", [entry]);
+    expect((await db.query("select count(*)::int n from public.events")).rows[0].n).toBe(before);
+  });
+
+  it("only invoices can be unpaid", async () => {
+    const pay = (
+      await db.query(
+        "select id from public.ledger_entries where project_id = $1 and kind = 'payment' limit 1",
+        [sample],
+      )
+    ).rows[0];
+    expect(pay).toBeDefined();
+    await expect(one(owner, "select public.set_invoice_paid($1, true)", [pay.id])).rejects.toThrow(
+      /Only invoices/,
+    );
+    await expect(
+      db.query("update public.ledger_entries set unpaid = true where id = $1", [pay.id]),
+    ).rejects.toThrow(/ledger_unpaid_invoices_only/);
+  });
+
   it("logs a change order as proposed", async () => {
     const id = await propose("log_change_order", {
       vendor: "Oak & Sons",

@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { bucketStats, budgetTotals, bufferSummary, stillToPay } from "./budget";
+import {
+  bucketStats,
+  budgetTotals,
+  bufferSummary,
+  proposedChangeOrders,
+  stillToPay,
+  unlinked,
+} from "./budget";
 import { addDays, daysBetween, daysText, shortDate, todayIn } from "./dates";
 import { decideBy, groupDecisions, withDeadlines } from "./deadlines";
 import { money, parseMoney } from "./money";
@@ -137,11 +144,20 @@ describe("sample project math", () => {
 
   it("counts chosen tile against the allowance before it's paid: $1,250 over", () => {
     expect(stats("tile")).toEqual({
-      paid: 195000,
+      budget: 800000,
       changeOrders: 0,
+      allowed: 800000,
+      billed: 195000,
+      paid: 195000,
+      unpaid: 0,
       chosen: 925000,
+      actual: 925000,
       used: 925000,
       left: -125000,
+      expected: 925000,
+      remaining: 730000,
+      owed: 730000,
+      reserved: 0,
     });
   });
 
@@ -244,5 +260,110 @@ describe("money", () => {
     expect(parseMoney("$3,900")).toBe(390000);
     expect(parseMoney("1250.5")).toBe(125050);
     expect(parseMoney("about 3k")).toBeNull();
+  });
+});
+
+describe("budget math (the audit)", () => {
+  const entry = (over: Partial<(typeof s.ledger)[number]>) => ({
+    id: "x",
+    kind: "invoice" as const,
+    date: TODAY,
+    vendor: "GC",
+    description: null,
+    amount_cents: 0,
+    bucket_id: "contract",
+    flags: [],
+    change_order_status: null,
+    unpaid: false,
+    ...over,
+  });
+  const buffer = (ledger: typeof s.ledger) =>
+    bufferSummary(s.sources, s.buckets, ledger, s.decisions).buffer;
+  const base = buffer(s.ledger);
+
+  it("an approved change order adds to what a line costs, so the buffer drops by its amount", () => {
+    const co = entry({
+      kind: "change_order",
+      change_order_status: "approved",
+      amount_cents: 1_000_000,
+    });
+    const st = bucketStats(bucket("contract"), [...s.ledger, co], s.decisions);
+    expect(st).toMatchObject({ allowed: 29_500_000, expected: 29_500_000, remaining: 22_375_000 });
+    expect(buffer([...s.ledger, co])).toBe(base - 1_000_000);
+    expect(budgetTotals(s.buckets, [...s.ledger, co], s.decisions).total).toBe(35_900_000);
+  });
+
+  it("on the cushion, a change order is spent from it and the buffer doesn't move", () => {
+    const co = entry({
+      kind: "change_order",
+      change_order_status: "approved",
+      amount_cents: 500_000,
+      bucket_id: "cushion",
+    });
+    expect(bucketStats(bucket("cushion"), [...s.ledger, co], s.decisions)).toMatchObject({
+      allowed: 2_850_000,
+      left: 2_110_000,
+      remaining: 2_850_000,
+    });
+    expect(buffer([...s.ledger, co])).toBe(base);
+  });
+
+  it("a proposed change order counts for nothing until it's approved, and is reported", () => {
+    const co = entry({
+      kind: "change_order",
+      change_order_status: "proposed",
+      amount_cents: 650_000,
+    });
+    expect(buffer([...s.ledger, co])).toBe(base);
+    expect(proposedChangeOrders([...s.ledger, co])).toEqual({ total: 65_000 + 650_000, count: 2 });
+  });
+
+  it("an invoice not paid yet is billed but doesn't reduce what's still to pay", () => {
+    const bill = entry({ amount_cents: 1_000_000, unpaid: true });
+    const st = bucketStats(bucket("contract"), [...s.ledger, bill], s.decisions);
+    expect(st).toMatchObject({
+      billed: 8_125_000,
+      paid: 7_125_000,
+      unpaid: 1_000_000,
+      remaining: 21_375_000,
+    });
+    expect(buffer([...s.ledger, bill])).toBe(base);
+    expect(budgetTotals(s.buckets, [...s.ledger, bill], s.decisions)).toMatchObject({
+      paid: 7_720_000,
+      unpaid: 1_000_000,
+    });
+  });
+
+  it("marking it paid moves it into Paid and lowers what's still to pay", () => {
+    expect(buffer([...s.ledger, entry({ amount_cents: 1_000_000 })])).toBe(base + 1_000_000);
+  });
+
+  it("an unpaid invoice that pushes a line over still shows as over", () => {
+    const bill = entry({ amount_cents: 25_000_000, unpaid: true });
+    const st = bucketStats(bucket("contract"), [...s.ledger, bill], s.decisions);
+    expect(st.left).toBe(-3_625_000);
+    expect(st.remaining).toBe(25_000_000);
+  });
+
+  it("money with no budget line is reported instead of vanishing into 'paid so far'", () => {
+    const loose = [
+      entry({ kind: "payment", amount_cents: 500_000, bucket_id: null }),
+      entry({ amount_cents: 300_000, bucket_id: null, unpaid: true }),
+    ];
+    expect(unlinked(s.buckets, loose)).toEqual({ paid: 500_000, unpaid: 300_000, count: 2 });
+    expect(buffer([...s.ledger, ...loose])).toBe(base);
+  });
+
+  it("every line adds up: still to pay is what's owed plus what's still reserved", () => {
+    for (const b of s.buckets) {
+      const st = bucketStats(b, s.ledger, s.decisions);
+      expect(st.owed + st.reserved).toBe(st.remaining);
+    }
+  });
+
+  it("the lines add up to the total still to pay", () => {
+    const sum = s.buckets.reduce((a, b) => a + bucketStats(b, s.ledger, s.decisions).remaining, 0);
+    expect(sum).toBe(27_305_000);
+    expect(sum).toBe(stillToPay(s.buckets, s.ledger, s.decisions));
   });
 });

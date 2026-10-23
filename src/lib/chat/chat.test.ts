@@ -30,6 +30,7 @@ const invoice = {
   bucket_id: "plumbing",
   description: "Rough-in second draw",
   kind: "invoice",
+  paid: true,
   image_index: 0,
   flags: [],
 };
@@ -112,6 +113,38 @@ describe("cards", () => {
       amount_cents: 240000,
     });
     expect(c.warnings).toEqual([]);
+  });
+
+  it("a bill not paid yet says so and is logged unpaid; a paid one isn't", () => {
+    const bill = card("log_invoice", { ...invoice, paid: false })!;
+    expect(bill.payload).toMatchObject({ kind: "invoice", unpaid: true });
+    expect(bill.detail).toContain("Not paid yet");
+    const receipt = card("log_invoice", invoice)!;
+    expect(receipt.payload).toMatchObject({ unpaid: false });
+    expect(receipt.detail).not.toContain("Not paid yet");
+    // Payments and credits are always money that moved.
+    expect(
+      card("log_invoice", { ...invoice, kind: "payment", paid: false })!.payload,
+    ).toMatchObject({ unpaid: false });
+  });
+
+  it("a payment that matches an unpaid invoice suggests marking that one paid", () => {
+    const ledger = [
+      ...s.ledger,
+      {
+        ...s.ledger[0],
+        id: "x",
+        kind: "invoice" as const,
+        vendor: "Rivera Plumbing",
+        amount_cents: 240000,
+        date: "2026-10-03",
+        unpaid: true,
+      },
+    ];
+    const c = card("log_invoice", { ...invoice, kind: "payment", paid: true }, ctx({ ledger }))!;
+    expect(c.warnings).toEqual([
+      "Matches the unpaid invoice from Rivera Plumbing on Oct 3: mark that one paid instead?",
+    ]);
   });
 
   it("warns when an invoice takes a budget line over", () => {
@@ -261,10 +294,10 @@ describe("briefing", () => {
     expect(b).toContain("Today: Friday, October 16, 2026 (2026-10-16)");
     expect(b).toContain("drywall | Walls close | 2026-12-07");
     expect(b).toContain(
-      "tile | Tile allowance | allowance | $8,000 | $1,950 | $9,250 | $1,250 OVER",
+      "tile | Tile allowance | allowance | $8,000 | $9,250 | $1,950 | $7,300 | $1,250 OVER",
     );
     expect(b).toContain(
-      "plumbing | Plumbing fixtures allowance | allowance | $9,500 | $0 | $6,890 | $2,610",
+      "plumbing | Plumbing fixtures allowance | allowance | $9,500 | $6,890 | $0 | $9,500 | $2,610",
     );
     expect(b).toContain("Total $290,000; still to pay $273,050; buffer $16,950");
     expect(b).toContain("- (preference) Wants brushed nickel everywhere");

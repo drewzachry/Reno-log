@@ -43,7 +43,7 @@ export async function loadRecord(supabase: SupabaseClient, projectId: string, on
     supabase
       .from("ledger_entries")
       .select(
-        "id, kind, date, vendor, description, amount_cents, bucket_id, flags, change_order_status",
+        "id, kind, date, vendor, description, amount_cents, bucket_id, flags, change_order_status, unpaid",
       )
       .eq("project_id", projectId)
       .is("deleted_at", null)

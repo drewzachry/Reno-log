@@ -46,7 +46,13 @@ export const TOOLS = [
       kind: {
         type: "string",
         enum: ["invoice", "payment", "credit"],
-        description: "invoice = a bill; payment = money paid; credit = money back.",
+        description:
+          "invoice = a bill from a vendor; payment = money already paid (a receipt, deposit or check); credit = money back.",
+      },
+      paid: {
+        type: "boolean",
+        description:
+          "Only for kind invoice: true if it has been paid (a paid stamp, 'paid in full', or the homeowner says they paid it); false for a bill still to be paid. Use false for payments and credits.",
       },
       image_index: nint("Index (0-based) of the attached image this was read from, or null."),
       flags: {
@@ -168,6 +174,7 @@ export const toolInputSchemas = {
     bucket_id: id.nullable(),
     description: z.string().max(500),
     kind: z.enum(["invoice", "payment", "credit"]),
+    paid: z.boolean(),
     image_index: index.nullable(),
     flags: z.array(z.string().trim().min(1).max(200)).max(5),
   }),

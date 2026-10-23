@@ -135,6 +135,7 @@ export function sampleProject(today: string) {
     bucket_id: bucket as string,
     flags: [],
     change_order_status: co as LedgerEntry["change_order_status"],
+    unpaid: false,
   }));
 
   const sources: FundingSource[] = [

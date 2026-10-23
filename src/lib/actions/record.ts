@@ -93,3 +93,10 @@ export async function removeFunding(id: string): Promise<ApplyResult> {
   refresh();
   return r;
 }
+
+/** Marks an invoice paid, or back to not paid yet. */
+export async function setInvoicePaid(entryId: string, paid: boolean): Promise<ApplyResult> {
+  const r = await applyProposal({ type: "set_invoice_paid", entry_id: entryId, paid });
+  refresh();
+  return r;
+}

@@ -69,6 +69,8 @@ export type LedgerEntry = {
   bucket_id: string | null;
   flags: string[];
   change_order_status: "proposed" | "approved" | "rejected" | null;
+  /** An invoice received but not paid yet. Payments and credits are always money that moved. */
+  unpaid: boolean;
 };
 
 /** Money set aside for the project: a name and an amount, not a real account. */
