@@ -2,11 +2,14 @@ import { execFileSync, spawn, type ChildProcess } from "node:child_process";
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { Client } from "pg";
+import { FAKE_GOOGLE_CLIENT_ID, FAKE_GOOGLE_PORT } from "./google";
 
 /**
  * Playwright global setup: a throwaway database with every migration applied,
- * PostgREST in front of it, and the test auth gateway on :54321. Needs a
- * Postgres server at TEST_DATABASE_URL (same as `npm run test:db`).
+ * PostgREST in front of it, the test auth gateway on :54321 (Supabase —
+ * still needed for budget/decisions/chat/documents, not yet migrated to the
+ * Sheet), and the fake Google ID token issuer on :54323. Needs a Postgres
+ * server at TEST_DATABASE_URL (same as `npm run test:db`).
  */
 const ROOT = join(__dirname, "../..");
 const ADMIN_URL = process.env.TEST_DATABASE_URL ?? "postgres://postgres@localhost:54329/postgres";
@@ -87,9 +90,18 @@ export default async function globalSetup() {
       },
       stdio: "inherit",
     }),
+    spawn(process.execPath, [join(__dirname, "fake-google.mjs")], {
+      env: {
+        ...process.env,
+        PORT: String(FAKE_GOOGLE_PORT),
+        GOOGLE_CLIENT_ID: FAKE_GOOGLE_CLIENT_ID,
+      },
+      stdio: "inherit",
+    }),
   ];
   await waitFor("http://localhost:54322/");
   await waitFor("http://localhost:54321/auth/v1/settings");
+  await waitFor(`http://localhost:${FAKE_GOOGLE_PORT}/oauth2/v3/certs`);
 
   return async () => {
     children.forEach((c) => c.kill());

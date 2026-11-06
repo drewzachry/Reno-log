@@ -8,7 +8,12 @@ import { createRemoteJWKSet } from "jose/jwks/remote";
 import { jwtVerify } from "jose/jwt/verify";
 import { googleClientId } from "./env";
 
-const JWKS = createRemoteJWKSet(new URL("https://www.googleapis.com/oauth2/v3/certs"));
+// Overridable so end-to-end tests can point this at a local fake issuer
+// (e2e/stack/fake-google.mjs) instead of the real Google endpoint — nothing
+// else about verification changes; the token still has to carry a genuine
+// signature, issuer, audience and expiry. Unset in every real environment.
+const JWKS_URL = process.env.GOOGLE_JWKS_URL || "https://www.googleapis.com/oauth2/v3/certs";
+const JWKS = createRemoteJWKSet(new URL(JWKS_URL));
 
 export type GoogleUser = {
   sub: string;
