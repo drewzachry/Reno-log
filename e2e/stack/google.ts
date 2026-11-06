@@ -215,3 +215,15 @@ export async function setFakePickerResult(
     window.__fakePickerResult = r;
   }, result);
 }
+
+/**
+ * The top-level project folders ("<name> — Reno") created so far in the
+ * fake Drive store, for tests that need a real folder id — e.g. to
+ * simulate a second person opening a project someone already created, via
+ * the Picker. Excludes the Uploads subfolder each project also creates.
+ */
+export function fakeDriveProjectFolders(): FakeFile[] {
+  return [...driveStore.values()].filter(
+    (f) => f.mimeType === "application/vnd.google-apps.folder" && f.name.endsWith(" — Reno"),
+  );
+}
