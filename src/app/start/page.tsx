@@ -2,35 +2,29 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { PlainShell } from "@/components/PlainShell";
 import { ui } from "@/components/ui";
-import { chosenName } from "@/lib/names";
-import { LoadSampleButton } from "@/components/record/LoadSampleButton";
+import { GoogleApiScripts } from "@/components/google/GoogleApiScripts";
+import { googleClientId, googlePickerApiKey } from "@/lib/google/env";
 import { getSession } from "@/lib/projects";
 import { StartForm } from "./StartForm";
 
 export const metadata = { title: "Start a project" };
 
 export default async function StartPage() {
-  const { user, myName, projects } = await getSession();
+  const { user, projects } = await getSession();
   if (!user) redirect("/login");
   const first = projects.length === 0;
 
   return (
     <PlainShell>
+      <GoogleApiScripts />
       <h1 className={ui.h1}>{first ? "Start your first project" : "Start a new project"}</h1>
       <p className="text-muted mt-1 mb-5">
-        Just a name for now. You can add your contract, plans and budget next, and invite the people
-        you’re renovating with.
+        Name it, and we’ll set up a folder in your Google Drive to hold the budget, the record and
+        anything you upload. Or open one someone already shared with you.
       </p>
-      <StartForm askName={first} name={chosenName(myName, user.email)} />
-      <div className="border-line mt-6 border-t pt-5">
-        <p className="text-muted mb-2 text-sm">
-          Want to look around first? Open a filled-in example: a kitchen and two baths, with
-          decisions, dates and a budget. It’s a separate project you can ignore later.
-        </p>
-        <LoadSampleButton />
-      </div>
+      <StartForm clientId={googleClientId()} pickerApiKey={googlePickerApiKey()} />
       {!first && (
-        <Link href="/" className={`${ui.ghost} mt-3 w-full`}>
+        <Link href="/" className={`${ui.ghost} mt-6 w-full`}>
           Back to {projects[0].name}
         </Link>
       )}
